@@ -86,6 +86,9 @@ int16_t yaw_err;
 int16_t Sum_pitch_err;
 int16_t Sum_roll_err;
 int16_t Sum_yaw_err;
+int16_t pitch_last_err=0;
+int16_t roll_last_err=0;
+int16_t yaw_last_err=0;
 
 // TX
 volatile uint8_t time[] = "0000  ";
@@ -291,12 +294,19 @@ void stabilize (){
 	Sum_pitch_err += pitch_err;
 	Sum_roll_err +=	 roll_err;
 	Sum_yaw_err += yaw_err;
-
+	
 	//	calculate corrections:
-	pitch_corr= Pitch_P*pitch_err+Pitch_I*Sum_pitch_err;
-	roll_corr= Roll_P*roll_err+Roll_I*Sum_roll_err;
-	yaw_corr= Yaw_P*yaw_err+Yaw_I*Sum_yaw_err;
+	pitch_corr= Pitch_P*pitch_err+Pitch_I*Sum_pitch_err+Pitch_D*(pitch_err-pitch_last_err)/delta_t;
+	roll_corr= Roll_P*roll_err+Roll_I*Sum_roll_err+Roll_D*(roll_err-roll_last_err)/delta_t;
+	yaw_corr= Yaw_P*yaw_err+Yaw_I*Sum_yaw_err+Yaw_D*(yaw_err-yaw_last_err)/delta_t;
 
+	//	set current errors as last errors:
+	pitch_last_err=pitch_err;
+	roll_last_err=roll_err;
+	yaw_last_err=yaw_err;
+	
+	//	Make corrections: 
+	
 	//	right front:
 	PWM_M1=Throttle-pitch_corr+yaw_corr+roll_corr;
 	//	right back:
