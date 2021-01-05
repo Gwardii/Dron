@@ -13,32 +13,19 @@
 #include "stm32l0xx_nucleo.h"
 #include "setup.h"
 #include "MPU6050.h"
+#include "stabilize.h"
+
 
 
 //	konfiguracja uzytkownika:
 
 uint8_t CHANNELS=10;		//ilosc kanalów (4 potrzebne do sterownaia)
 
-//	PID configuration:
-// Pitch:
-uint8_t Pitch_P=0;
-uint8_t Pitch_I=0;
-uint8_t Pitch_D=0;
-//	Roll
-uint8_t Roll_P=0;
-uint8_t Roll_I=0;
-uint8_t Roll_D=0;
-//	Yaw
-uint8_t Yaw_P=0;
-uint8_t Yaw_I=0;
-uint8_t Yaw_D=0;
-
 
 
 
 void print(uint16_t x, int8_t nr,uint8_t enter);
 void update_motors();
-void stabilize();
 int failsafe();
 
 // zmienne do debugowania:
@@ -77,18 +64,7 @@ int16_t Pitch;
 int16_t Roll;
 int16_t Yaw;
 
-int16_t pitch_corr;
-int16_t roll_corr;
-int16_t yaw_corr;
-int16_t pitch_err;
-int16_t roll_err;
-int16_t yaw_err;
-int16_t Sum_pitch_err;
-int16_t Sum_roll_err;
-int16_t Sum_yaw_err;
-int16_t pitch_last_err=0;
-int16_t roll_last_err=0;
-int16_t yaw_last_err=0;
+
 
 // TX
 volatile uint8_t time[] = "0000  ";
@@ -200,9 +176,6 @@ int main(void)
 
 	while (1) {
 
-//		gyro_read();
-		acc_read();
-		tem_read();
 		Throttle=channels[2];
 		// if failsafe occurs set motors to 0 rpm:
 
@@ -283,40 +256,7 @@ void update_motors(){
 
 }
 
-void stabilize (){
 
-	// err values - difference between set value and measured value:
-	pitch_err=channels[1]-Pitch;
-	roll_err=channels[0]-Roll;
-	yaw_err=channels[3]-Yaw;
-
-	//	estimate Integral by sum (I term):
-	Sum_pitch_err += pitch_err;
-	Sum_roll_err +=	 roll_err;
-	Sum_yaw_err += yaw_err;
-	
-	//	calculate corrections:
-	pitch_corr= Pitch_P*pitch_err+Pitch_I*Sum_pitch_err+Pitch_D*(pitch_err-pitch_last_err)/delta_t;
-	roll_corr= Roll_P*roll_err+Roll_I*Sum_roll_err+Roll_D*(roll_err-roll_last_err)/delta_t;
-	yaw_corr= Yaw_P*yaw_err+Yaw_I*Sum_yaw_err+Yaw_D*(yaw_err-yaw_last_err)/delta_t;
-
-	//	set current errors as last errors:
-	pitch_last_err=pitch_err;
-	roll_last_err=roll_err;
-	yaw_last_err=yaw_err;
-	
-	//	Make corrections: 
-	
-	//	right front:
-	PWM_M1=Throttle-pitch_corr+yaw_corr+roll_corr;
-	//	right back:
-	PWM_M2=Throttle+pitch_corr-yaw_corr+roll_corr;
-	//	left back:
-	PWM_M3=Throttle+pitch_corr+yaw_corr-roll_corr;
-	//	left front:
-	PWM_M4=Throttle-pitch_corr-yaw_corr-roll_corr;
-
-}
 int failsafe(){
 	// Arming switch - SA
 	if(channels[4]<=1600){

@@ -102,9 +102,9 @@ void gyro_read(){
 	// 	waiting as STOP byte will be sent
 	}
 	//	rescale data from register to format 0-2000 (represent -1000 - 1000 [deg/s] in real)
-	Gyro_Acc[0]=Gyro_Acc[0]/32768.*1000+1000;
-	Gyro_Acc[1]=Gyro_Acc[1]/32768.*1000+1000;
-	Gyro_Acc[2]=Gyro_Acc[2]/32768.*1000+1000;
+	//Gyro_Acc[0]=Gyro_Acc[0]/32768.*1000+1000;
+	//Gyro_Acc[1]=Gyro_Acc[1]/32768.*1000+1000;
+	//Gyro_Acc[2]=Gyro_Acc[2]/32768.*1000+1000;
 	dataFlag2=1;
 }
 
@@ -166,9 +166,9 @@ void acc_read(){
 	}
 
 	//	rescale data from register to format 0-1600 (represent -8.00 - 8.00 [g] in real)
-	Gyro_Acc[3]=Gyro_Acc[3]*100/4096+800;
-	Gyro_Acc[4]=Gyro_Acc[4]*100/4096+800;
-	Gyro_Acc[5]=Gyro_Acc[5]*100/4096+800;
+	//Gyro_Acc[3]=Gyro_Acc[3]*100/4096+800;
+	//Gyro_Acc[4]=Gyro_Acc[4]*100/4096+800;
+	//Gyro_Acc[5]=Gyro_Acc[5]*100/4096+800;
 
 	dataFlag2=1;
 }
