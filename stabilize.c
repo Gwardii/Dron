@@ -89,7 +89,7 @@ static uint16_t micros(){
 static void gyro_angles(ThreeD *gyro_angles){
 	gyro_angles->roll 	+=	 (Gyro_Acc[0] + GYRO_ROLL_OFFSET) * dt;
 	gyro_angles->pitch 	+=	 (Gyro_Acc[1] + GYRO_PITCH_OFFSET) * dt;
-	gyro_angles->roll 	+=	 (Gyro_Acc[2] + GYRO_YAW_OFFSET) * dt;
+	gyro_angles->yaw 	+=	 (Gyro_Acc[2] + GYRO_YAW_OFFSET) * dt;
 }
 
 static void acc_angles(){
