@@ -44,6 +44,7 @@ typedef struct{
 	double pitch;
 	double yaw;
 }ThreeD;
+
 static ThreeD angles;
 
 static const double rad_to_deg = atan(1) * 4;
@@ -81,8 +82,9 @@ void stabilize(){
 static uint16_t micros(){
 	static uint16_t t1;
 	uint16_t t2 = TIM2->CNT;
-	if(t2 > t1)
+	if(t2 > t1){
 		return t2 - t1;
+	}
 	return (uint16_t)TIM2->ARR + 1 + t2 - t1;
 }
 
@@ -94,22 +96,23 @@ static void gyro_angles(ThreeD *gyro_angles){
 
 static void acc_angles(){
 	static Three acc_outcome[MEDIAN_BUFFOR];
-	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--)
+	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
 		acc_outcome[i] = acc_outcome[i-1];
-	acc_outcome[0].roll 	= 	Gyro_Acc[3];
-	acc_outcome[0].pitch 	= 	Gyro_Acc[4];
-	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
+	}	
+	acc_outcome[0].pitch 	= 	Gyro_Acc[3];
+	acc_outcome[0].roll 	= 	Gyro_Acc[4];
+	acc_outcome[0].yaw 	= 	Gyro_Acc[5];
 	Three acc_filtered = median_filter(acc_outcome);
-	acc_angle_roll 	= 	atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
-	acc_angle_pitch	=	atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch
-		+ acc_filtered.yaw*acc_filtered.yaw));
+	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg;
+	acc_angle_pitch	=	atan2(acc_filtred.pitch, acc_filtred.yaw)*rad_to_deg;
+		//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
 
 static void complementary_filter(){
 	gyro_angles(&angles);
 	acc_angles();
 	angles.roll		=	ACC_PART * acc_angle_roll + GYRO_PART * angles.roll;
-	angles.pitch	=	ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
+	angles.pitch		=	ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
 }
 
 static Three median_filter(Three values[]){
@@ -120,27 +123,36 @@ static Three median_filter(Three values[]){
 		count.pitch = 0;
 		count.yaw = 0;
 		for(int j = 0; j < i; j++){
-			if(values[i].roll <= values[j].roll)
+			if(values[i].roll <= values[j].roll){
 				count.roll += 1;
-			if(values[i].pitch <= values[j].pitch)
-				count.roll += 1;
-			if(values[i].pitch <= values[j].pitch)
-				count.roll += 1;
+			}
+			if(values[i].pitch <= values[j].pitch){
+				count.pitch += 1;
+			}
+			if(values[i].yaw <= values[j].yaw){
+				count.yaw += 1;
+			}
 			}
 		for(int j = i+1; j < MEDIAN_BUFFOR; j++){
-			if(values[i].roll <= values[j].roll)
-				count.roll += 1;
-			if(values[i].pitch <= values[j].pitch)
-				count.roll += 1;
-			if(values[i].pitch <= values[j].pitch)
+			if(values[i].roll <= values[j].roll){
 				count.roll += 1;
 			}
-		if(count.roll == MEDIAN_BUFFOR / 2)
+			if(values[i].pitch <= values[j].pitch){
+				count.pitch += 1;
+			}
+			if(values[i].yaw <= values[j].yaw){
+				count.yaw += 1;
+			}
+			}
+		if(count.roll == MEDIAN_BUFFOR / 2){
 			filtered_values.roll = values[i].roll;
-		if(count.pitch == MEDIAN_BUFFOR / 2)
+		}
+		if(count.pitch == MEDIAN_BUFFOR / 2){
 			filtered_values.pitch = values[i].pitch;
-		if(count.yaw == MEDIAN_BUFFOR / 2)
+		}
+		if(count.yaw == MEDIAN_BUFFOR / 2){
 			filtered_values.yaw = values[i].yaw;
+		}	
 		}
 
 	return filtered_values;
@@ -162,7 +174,7 @@ static Three rates_PID(){
 		//	estimate Integral by sum (I term):
 	sum_err.roll 	+=	 err.roll;
 	sum_err.pitch 	+=	 err.pitch;
-	sum_err.yaw		+=	 err.yaw;
+	sum_err.yaw	+=	 err.yaw;
 
 		//	calculate corrections:
 	corr.roll	=	R_PID.P * err.roll + R_PID.I*sum_err.roll + R_PID.D * (err.roll - last_err.roll) / dt;
@@ -192,7 +204,7 @@ static Three angles_PID(Three rates){
 		//	estimate Integral by sum (I term):
 	sum_err.roll 	+=	 err.roll;
 	sum_err.pitch 	+=	 err.pitch;
-	sum_err.yaw		+=	 err.yaw;
+	sum_err.yaw	+=	 err.yaw;
 
 		//	calculate corrections:
 	corr.roll	=	(R_PID.P * err.roll + R_PID.I*sum_err.roll + R_PID.D * (err.roll - last_err.roll) / dt)*1000/32768;
