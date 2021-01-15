@@ -80,7 +80,7 @@ volatile int8_t dataFlag2 = 0;
 //int8_t rxindex=0;
 volatile uint8_t rxBuf[32];
 volatile uint8_t rxindex=0;
-volatile uint8_t ibus_received=0;
+volatile int8_t ibus_received=0;
 
 void USART2_IRQHandler(void) {
 
@@ -91,15 +91,16 @@ void USART2_IRQHandler(void) {
 	//	read actual value of I-BUS (flag will be automatically removed):
 	rxBuf[rxindex]=USART2->RDR;
 
-//	current_time=TIM2->CNT;
-//	if(current_time<last_time){
-//		gap_time=current_time-last_time+TIM2->ARR;
-//	}else{
-//	gap_time=current_time-last_time;
-//	}
-//	if (gap_time>500){
-//		rxindex=0;
-//	}
+	current_time=TIM2->CNT;
+	if(current_time<last_time){
+		gap_time=current_time-last_time+TIM2->ARR;
+	}else{
+	gap_time=current_time-last_time;
+	}
+	last_time=current_time;
+	if (gap_time>500){
+		rxindex=0;
+	}
 
 	if(rxindex==31){
 	ibus_received=1;
@@ -170,22 +171,22 @@ int main(void)
 	while (1) {
 
 	// checking checksum and rewriting rxBuf to channels:
-		if(ibus_received!=0){
-//			int16_t checksum=0xFFFF;
-//			for(int8_t i=0;i<30;i++){
-//			checksum -=rxBuf[i];
-//			}if(checksum==(rxBuf[31]<<8+rxBuf[30])){
+		if(ibus_received){
+			uint16_t checksum=0xFFFF;
+			for(int8_t i=0;i<30;i++){
+			checksum -=rxBuf[i];
+			}if(checksum==((rxBuf[31]<<8)+rxBuf[30])){
 				for(int8_t i=0;i<CHANNELS;i++){
-					channels[i]=rxBuf[2*(i+1)+1]<<8+rxBuf[2*(i+1)];
+					channels[i]=(rxBuf[2*(i+1)+1]<<8)+rxBuf[2*(i+1)];
 					}
 				new_I_Bus=1;
 				rxindex=0;
-//			}else{//checksum is not correct
-//				rxindex=0;
-//			}
-			//unlock receiving data from i-Bus:
+			}else{//checksum is not correct
+			}
+		//	unlock receiving data from i-Bus:
 			USART2->CR1 |= USART_CR1_RXNEIE;
 			ibus_received=0;
+			rxindex=0;
 		}
 
 
