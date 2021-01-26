@@ -24,8 +24,9 @@ int8_t new_I_Bus=0;
 
 extern volatile uint8_t time[];
 extern uint8_t CHANNELS;
-extern uint8_t channels[];
+extern uint16_t channels[];
 extern uint8_t gap_time;
+extern uint8_t txDone;
 
 void USART2_IRQHandler(void) {
 
@@ -72,6 +73,7 @@ void USART2_IRQHandler(void) {
 	// if everything is transmitted, unable transmission interrupts:
 		if (g_txTransmitted == g_txSize) {
 			USART2->CR1 &= ~USART_CR1_TXEIE;
+			txDone=1;
 		}
 	}
 }

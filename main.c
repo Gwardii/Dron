@@ -14,7 +14,7 @@
 #include "setup.h"
 #include "MPU6050.h"
 #include "stabilize.h"
-
+#include "ibus.h"
 
 
 //	konfiguracja uzytkownika:
@@ -97,12 +97,12 @@ int main(void)
 		update_motors();
 	}
 	else{
-//		stabilize();
-//		LED();// przeskalowanie pwm zeby ledy imitowaly jasnoscia obroty
-//		update_motors();
+		stabilize();
+//	LED();// przeskalowanie pwm zeby ledy imitowaly jasnoscia obroty
+		update_motors();
 	}
-
-	if (0!=new_I_Bus) {
+	Ibus_save();
+	if (0!=new_I_Bus && 0!=txDone) {
 			// Transmit data
 
 			print(channels[channel_nr],channel_nr,CHANNELS);
@@ -111,7 +111,7 @@ int main(void)
 
 			if(channel_nr>=CHANNELS){
 				channel_nr=0;
-				dataFlag=0;
+				new_I_Bus=0;
 				//USART2->CR1 |= USART_CR1_RXNEIE;	//wlaczam przerwania od odbioru
 			}
 	}
