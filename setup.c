@@ -13,6 +13,7 @@ static void setup_USART2(); // USART for radioreceiver
 static void setup_GPIOA();// ------------- GPIOA (pin 0 - TIM2_CH1, pin 1 - TIM2_CH2, pin 2 - TX, pin 15 - RX) -------------
 static void setup_GPIOB();// ------------- GPIOB (pin 8 - SCL, pin 9 - SDA, pin 10 - TIM2_CH3, pin 11 - TIM2_CH4) -------------
 static void setup_TIM2();// setup TIM2
+static void setup_TIM21();// setup TIM21
 static void setup_I2C1();
 static void setup_NVIC();
 
@@ -22,6 +23,7 @@ void setup(){
 	setup_GPIOA();
 	setup_GPIOB();
 	setup_TIM2();
+	setup_TIM21();
 	setup_I2C1();
 	setup_NVIC();
 }
@@ -100,6 +102,7 @@ static void setup_GPIOB(){
 
 		GPIOB->OSPEEDR |= ( GPIO_OSPEEDER_OSPEED8_1 | GPIO_OSPEEDER_OSPEED8_0 | GPIO_OSPEEDER_OSPEED9_1 | GPIO_OSPEEDER_OSPEED9_0 | GPIO_OSPEEDER_OSPEED10_1 | GPIO_OSPEEDER_OSPEED10_0 | GPIO_OSPEEDER_OSPEED11_1 | GPIO_OSPEEDER_OSPEED11_0);
 }
+
 static void setup_TIM2(){
 	// enable TIM2 clock:
 		RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
@@ -132,6 +135,17 @@ static void setup_TIM2(){
 		TIM2->CCR3 =1000 - 1; 			//wypelneinie channel 3
 		TIM2->CCR4 =1000 - 1; 			//wypelneinie channel 4
 }
+
+static void setup_TIM21(){
+	// enable TIM2 clock:
+		RCC->APB2ENR |= RCC_APB2ENR_TIM21EN;
+		// register is buffered:
+		TIM21->CR1 |=TIM_CR1_ARPE;
+
+		TIM2->PSC =160 ; 			// every 10 us 1 count
+		TIM2->ARR = 65536 - 1; 		// 1 period is 0.65536 s long
+}
+
 static void setup_I2C1(){
 	//	enable I2C clock:
 		RCC->APB1ENR |= RCC_APB1ENR_I2C1EN;
@@ -142,6 +156,7 @@ static void setup_I2C1(){
 		//	peripheral enable:
 		I2C1->CR1 = I2C_CR1_PE;
 }
+
 static void setup_NVIC(){
 	// nvic interrupt enable (USART2 interrupt):
 	NVIC_EnableIRQ(USART2_IRQn);
