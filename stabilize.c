@@ -104,7 +104,7 @@ static void acc_angles(){
 	acc_outcome[0].yaw 	= 	Gyro_Acc[5];
 	Three acc_filtered = median_filter(acc_outcome);
 	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg;
-	acc_angle_pitch	=	atan2(acc_filtred.pitch, acc_filtred.yaw)*rad_to_deg;
+	acc_angle_pitch	=	atan2(acc_filtered.pitch, acc_filtered.yaw)*rad_to_deg;
 		//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
 

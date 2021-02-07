@@ -68,7 +68,6 @@ int16_t Yaw;
 volatile uint8_t time[] = "0000  ";
 
 extern int8_t new_I_Bus;
-extern uint8_t dataFlag;
 extern volatile int32_t g_txSize;
 extern volatile int32_t g_txTransmitted;
 
