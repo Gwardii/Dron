@@ -37,14 +37,7 @@ int16_t acc_tab_x[1000];
 int16_t acc_tab_y[1000];
 int16_t acc_tab_z[1000];
 
-typedef struct {
-	int16_t x;
-	int16_t y;
-	int16_t z;
-}ThreeXYZ;
 
-ThreeXYZ gyro_calibration();
-ThreeXYZ acc_calibration();
 
 ThreeXYZ gyro_calibration(){
 ThreeXYZ G_calibration={0,0,0};
