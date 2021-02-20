@@ -11,9 +11,33 @@
 static void setup_conf();
 static void setup_gyro();
 static void setup_acc();
+static void read(uint8_t, uint8_t [], uint8_t);
+static void rewrite_data();
+static inline void nothing(){}
+
+void (*after_transmission)() = nothing;
 
 extern int16_t Gyro_Acc[];
 extern int8_t dataFlag2;
+extern uint8_t I2C1_read_write_flag;
+
+uint8_t* read_write_tab;
+uint8_t read_write_quantity;
+uint8_t aux_tab[14];
+uint8_t data_flag = 0;
+
+void I2C1_IRQHandler(){
+	static uint8_t i = 0;
+	if(I2C1->ISR |= I2C_ISR_RXNE){
+		read_write_tab[i] = I2C1->RXDR;
+		i++;
+		if(i > read_write_quantity - 1){
+			i = 0;
+			(*after_transmission)();
+			I2C1_read_write_flag = 1;
+		}
+	}
+}
 void setup_MPU6050(){
 	setup_conf();
 	setup_gyro();
@@ -58,7 +82,6 @@ void gyro_read(){
 	I2C_StartRead(6);
 
 	// First and second registers reads as X:
-
 	while(!(I2C1->ISR & I2C_ISR_RXNE)){
 	// waiting as Data arrive to RXDR
 	}
@@ -209,6 +232,12 @@ void tem_read(){
 
 	dataFlag2=1;
 }
+void read_all(){
+	after_transmission = rewrite_data;
+	I2C1_read_write_flag = 0;
+	read(0x3B, aux_tab, 14);
+	data_flag = 1;
+}
 
 static void setup_conf(){
 	//-------main MPU6050 setting-----------
@@ -276,4 +305,24 @@ static void setup_acc(){
 		while(I2C1->CR2 & I2C_CR2_STOP){
 		// 	waiting as STOP byte will be sent
 		}
+}
+static void read(uint8_t address, uint8_t tab[], uint8_t n){
+	read_write_tab = tab;
+	read_write_quantity = n;
+	I2C_StartWrite(1);
+	//	1st address of accelerometer measurements, every next reading will increase register number by 1
+	I2C1->TXDR = address;
+	while(!(I2C1->ISR & I2C_ISR_TXE)){
+	//	waiting as Data will be sent
+	}
+	// enable interrupt from RXNE flag
+	I2C1->CR1 |= I2C_CR1_RXIE;
+	I2C_StartRead(n);
+}
+static void rewrite_data(){
+	for(int i =0; i<3; i++){
+		Gyro_Acc[i] = read_write_tab[2*i+8] << 8 | read_write_tab[2*i+9];
+		Gyro_Acc[i+3] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
+	}
+	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
 }

@@ -17,5 +17,6 @@ void I2C_StartRead(uint16_t);
 void gyro_read();
 void acc_read();
 void tem_read();
+void read_all();
 
 #endif /* MPU6050_H_ */
