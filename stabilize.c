@@ -10,13 +10,13 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART .995
-#define ACC_PART .005
+#define GYRO_PART 0.95
+#define ACC_PART .05
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
-#define GYRO_ROLL_OFFSET 0
-#define GYRO_PITCH_OFFSET 0
-#define GYRO_YAW_OFFSET 0
+#define GYRO_ROLL_OFFSET -28.787424166100877
+#define GYRO_PITCH_OFFSET 23.64611577126087
+#define GYRO_YAW_OFFSET -45.658468209991462
 
 #define MAX_ROLL_ANGLE 20
 #define MAX_PITCH_ANGLE 20
@@ -59,41 +59,53 @@ static double acc_angle_pitch;
 static double dt;
 
 static double micros();
+static double milis();
 static void gyro_angles(ThreeD*);
 static void acc_angles();
 static void complementary_filter();
 static ThreeD median_filter(ThreeD *);
 static ThreeD angles_PID();
+static void set_motors(ThreeD);
 
 void stabilize(){
+	static double time;
+	time += milis();
+	if(time < 20)
+		return;
+	time = 0;
 	dt = micros();
 	complementary_filter();
-	ThreeD corr = angles_PID();
-	//	Make corrections:
-
-	//	right front:
-	PWM_M1 = Throttle - corr.pitch + corr.yaw + corr.roll;
-	//	right back:
-	PWM_M2 = Throttle + corr.pitch - corr.yaw + corr.roll;
-	//	left back:
-	PWM_M3 = Throttle + corr.pitch + corr.yaw - corr.roll;
-	//	left front:
-	PWM_M4 = Throttle - corr.pitch - corr.yaw - corr.roll;
+	set_motors(angles_PID());
 }
 
 static double micros(){
 	static uint16_t t1;
+	double temp;
 	uint16_t t2 = TIM2->CNT;
 	if(t2 > t1){
-		return (t2 - t1)/1000000.;
+		temp = (t2 - t1)/1000000.;
 	}
-	return (TIM2->ARR + 1 + t2 - t1)/1000000.;
+	else
+		temp = (TIM2->ARR + 1 + t2 - t1)/1000000.;
+	t1=t2;
+	return temp;
+}
+static double milis() {
+	static uint16_t t1;
+	double temp;
+	uint16_t t2 = TIM2->CNT;
+	if (t2 > t1) {
+		temp = (t2 - t1) / 100.;
+	} else
+		temp = (TIM2->ARR + 1 + t2 - t1) / 100.;
+	t1 = t2;
+	return temp;
 }
 
 static void gyro_angles(ThreeD *gyro_angles){
-	gyro_angles->roll 	+=	 GYRO_TO_DPS * (Gyro_Acc[0] + GYRO_ROLL_OFFSET) * dt;
-	gyro_angles->pitch 	+=	 GYRO_TO_DPS * (Gyro_Acc[1] + GYRO_PITCH_OFFSET) * dt;
-	gyro_angles->yaw 	+=	 GYRO_TO_DPS * (Gyro_Acc[2] + GYRO_YAW_OFFSET) * dt;
+	gyro_angles->roll 	+=	 (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt/GYRO_TO_DPS;
+	gyro_angles->pitch 	+=	 (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt/GYRO_TO_DPS;
+	//gyro_angles->yaw 	+=	 GYRO_TO_DPS * (Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt;
 }
 
 static void acc_angles(){
@@ -166,12 +178,12 @@ static ThreeD angles_PID(){
 	ThreeD corr;
 	static ThreeD last_err 	=	{0, 0, 0};
 	static ThreeD sum_err	=	{0, 0, 0};
-	PID R_PID 	=	 {.5,.3,0};
-	PID P_PID 	=	 {.5,.3,0};
-	PID Y_PID 	=	 {.65,.3,0};
-	err.roll	=	(channels[0] - 1500) * MAX_ROLL_ANGLE/500. - angles.roll;
-	err.pitch	=	(channels[1] - 1500) * MAX_PITCH_ANGLE/500. - angles.pitch;
-	err.yaw		=	(channels[3] - 1500) * MAX_YAW_ANGLE/500. - angles.yaw;
+	PID R_PID 	=	 {10,0,0};
+	PID P_PID 	=	 {10,0,0};
+	PID Y_PID 	=	 {10,0,0};
+	err.roll	=	-((channels[0] - 1500) * MAX_ROLL_ANGLE/500. - angles.roll);
+	err.pitch	=	-((channels[1] - 1500) * MAX_PITCH_ANGLE/500. - angles.pitch);
+	err.yaw		=	-((channels[3] - 1500) * MAX_YAW_ANGLE/500. - angles.yaw);
 
 		//	estimate Integral by sum (I term):
 	sum_err.roll 	+=	 err.roll;
@@ -190,4 +202,35 @@ static ThreeD angles_PID(){
 	return corr;
 }
 
+static void set_motors(ThreeD corr){
+	//	Make corrections:
 
+		//	right front:
+		PWM_M1 = Throttle - corr.pitch + corr.yaw + corr.roll;
+		//	right back:
+		PWM_M2 = Throttle + corr.pitch - corr.yaw + corr.roll;
+		//	left back:
+		PWM_M3 = Throttle + corr.pitch + corr.yaw - corr.roll;
+		//	left front:
+		PWM_M4 = Throttle - corr.pitch - corr.yaw - corr.roll;
+		if (PWM_M1 < 1050) {
+			PWM_M1 = 1050;
+		}
+		else if(PWM_M1 > 2000)
+			PWM_M1 = 2000;
+		if (PWM_M2 < 1050) {
+			PWM_M2 = 1050;
+		}
+		else if(PWM_M2 > 2000)
+			PWM_M2 = 2000;
+		if (PWM_M3 < 1050) {
+			PWM_M3 = 1050;
+		}
+		else if(PWM_M3 > 2000)
+			PWM_M3 = 2000;
+		if (PWM_M4 < 1050) {
+			PWM_M4 = 1050;
+		}
+		else if(PWM_M4 > 2000)
+			PWM_M4 = 2000;
+}
