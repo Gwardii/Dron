@@ -56,10 +56,15 @@ PID Y_PID = { 0.65, 0.3, 0 };
 
 Three err;
 Three sum_err = { 0, 0, 0 };
-
+Three last_err = {0,0,0};
+Three D_corr={0,0,0};
+Three last_D_corr={0,0,0};
 void acro() {
-	gyro_read();
-	Three corr;
+	Three corr={0,0,0};
+
+	uint16_t dt;
+
+	dt=micros();
 
 
 	err.roll = (channels[0] - 1500) * 32768/1000 - Gyro_Acc[0] * 1000 / Rates.roll;
@@ -71,11 +76,18 @@ void acro() {
 	sum_err.pitch += err.pitch;
 	sum_err.yaw += err.yaw;
 
+
+
+	//low-pass filter
+	D_corr.roll= (err.roll-last_err.roll+last_D_corr.roll)/dt/2;
+	D_corr.pitch=(err.pitch-last_err.pitch+last_D_corr.pitch)/dt/2;
+	D_corr.yaw=(err.yaw-last_err.yaw+last_D_corr.yaw)/dt/2;
+
 	anti_windup();
 
-	corr.pitch = (P_PID.P * err.pitch + P_PID.I*sum_err.pitch)*1000/ 32768;
-	corr.roll = (R_PID.P * err.roll + R_PID.I*sum_err.roll)*1000/ 32768;
-	corr.yaw = (Y_PID.P * err.yaw + Y_PID.I*sum_err.yaw)*1000/ 32768;
+	corr.pitch = (P_PID.P * err.pitch + P_PID.I*sum_err.pitch+P_PID.D*D_corr.pitch)*1000/ 32768;
+	corr.roll = (R_PID.P * err.roll + R_PID.I*sum_err.roll+R_PID.D*D_corr.roll)*1000/ 32768;
+	corr.yaw = (Y_PID.P * err.yaw + Y_PID.I*sum_err.yaw+Y_PID.D*D_corr.yaw)*1000/ 32768;
 
 //	right front:
 	PWM_M1 = Throttle - corr.pitch + corr.yaw - corr.roll;
@@ -120,6 +132,17 @@ void anti_windup() {
 	} else if (sum_err.yaw * Y_PID.I < -max_I_correction) {
 		sum_err.yaw = -max_I_correction / Y_PID.I;
 	}
+	int16_t max_D_correction = 300;
+	if(abs(D_corr.roll)>max_D_correction){
+		D_corr.roll=last_D_corr.roll;
+	}
+	if(abs(D_corr.pitch)>max_D_correction){
+		D_corr.pitch=last_D_corr.pitch;
+	}
+	if(abs(D_corr.yaw)>max_D_correction){
+		D_corr.yaw=last_D_corr.yaw;
+	}
+
 
 }
 

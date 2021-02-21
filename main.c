@@ -13,6 +13,7 @@
 #include "stm32l0xx_nucleo.h"
 #include "setup.h"
 #include "MPU6050.h"
+#include "acro.h"
 #include "stabilize.h"
 #include "ibus.h"
 
@@ -43,7 +44,7 @@ uint16_t current_time=0;
 uint16_t last_time=0;
 uint16_t gap_time=0;
 uint8_t txDone=1;
-uint16_t channels[14] = {1500,1500,1000,1500};
+uint16_t channels[14];
 int32_t gyro_X=0;
 int32_t gyro_Y=0;
 int32_t gyro_Z=0;
@@ -82,8 +83,9 @@ int main(void)
 	int8_t gyro_nr=0;
 	while (1) {
 
-
-		if(I2C1_read_write_flag) read_all();
+	if(I2C1_read_write_flag) {
+		read_all();
+	}
 
 	volatile int16_t podglad[7];
 	for(int i=0; i<7; i++) podglad[i] = Gyro_Acc[i];
@@ -95,9 +97,6 @@ int main(void)
 	static int kanaly[4];
 	for (int i =0; i<4;i++)
 		kanaly[i]=channels[i];
-		static double debug[3];
-		for (int i = 0; i < 3; i++)
-			debug[i] = srednia[i] / counter;
 
 	Throttle=channels[2];
 		// if failsafe occurs set motors to 0 rpm:
@@ -107,14 +106,16 @@ int main(void)
 		PWM_M2=1000;
 		PWM_M3=1000;
 		PWM_M4=1000;
-
-		update_motors();
 	}
-	else{
+	else if(channels[6]<1450){
+		acro();
+	}
+	else if(channels[6]>1400){
 		stabilize();
-//	LED();// przeskalowanie pwm zeby ledy imitowaly jasnoscia obroty
-		update_motors();
 	}
+
+	update_motors();
+
 	Ibus_save();
 	if (0!=new_I_Bus && 0!=txDone) {
 			// Transmit data
@@ -126,23 +127,9 @@ int main(void)
 			if(channel_nr>=CHANNELS){
 				channel_nr=0;
 				new_I_Bus=0;
-				//USART2->CR1 |= USART_CR1_RXNEIE;	//wlaczam przerwania od odbioru
+
 			}
 	}
-
-//		//	wypisywanie gyro
-//		if ((0!=dataFlag2)&&(txDone!=0)){
-//
-//		print((uint16_t)Gyro_Acc[gyro_nr],gyro_nr,Gyro_Acc_Size);
-//
-//		gyro_nr++;
-//		if(gyro_nr>=Gyro_Acc_Size){
-//			gyro_nr=0;
-//			dataFlag=0;
-//			USART2->CR1 |= USART_CR1_RXNEIE;	//wlaczam przerwania od odbioru
-//		}
-//		}
-
 		}
 	}
 
