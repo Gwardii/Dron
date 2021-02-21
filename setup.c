@@ -155,6 +155,10 @@ static void setup_I2C1(){
 		I2C1->TIMINGR = (uint32_t)0x10320309;
 		//	peripheral enable:
 		I2C1->CR1 = I2C_CR1_PE;
+		// autoend enable
+		I2C1->CR2 |= I2C_CR2_AUTOEND;
+		// interrupt from I2C1 not masked
+		EXTI->IMR |= EXTI_IMR_IM23;
 }
 
 static void setup_NVIC(){
@@ -162,6 +166,8 @@ static void setup_NVIC(){
 	NVIC_EnableIRQ(USART2_IRQn);
 	// nvic interrupt enable (TIM2 interrupt):
 	NVIC_EnableIRQ(TIM2_IRQn);
+	// I2C1 interrupt enable:
+	NVIC_EnableIRQ(I2C1_IRQn);
 
 	//	TIM2 enabling:
 	TIM2->CR1 |=TIM_CR1_CEN;
