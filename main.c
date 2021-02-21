@@ -65,6 +65,8 @@ int16_t Pitch;
 int16_t Roll;
 int16_t Yaw;
 
+uint8_t I2C1_read_write_flag = 1;
+
 volatile uint8_t time[] = "0000  ";
 
 extern int8_t new_I_Bus;
@@ -81,8 +83,19 @@ int main(void)
 	while (1) {
 
 
+		if(I2C1_read_write_flag) read_all();
+		stabilize();
 
-
+	volatile int16_t podglad[7];
+	for(int i=0; i<7; i++) podglad[i] = Gyro_Acc[i];
+	static int counter = 0;
+	static double srednia[3] = {0};
+	for (int i = 0;i<3;i++)
+		srednia[i] += podglad[i];
+	counter++;
+	static int kanaly[4];
+	for (int i =0; i<4;i++)
+		kanaly[i]=channels[i];
 
 	Throttle=channels[2];
 		// if failsafe occurs set motors to 0 rpm:
