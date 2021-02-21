@@ -43,7 +43,7 @@ uint16_t current_time=0;
 uint16_t last_time=0;
 uint16_t gap_time=0;
 uint8_t txDone=1;
-uint16_t channels[14];
+uint16_t channels[14] = {1500,1500,1000,1500};
 int32_t gyro_X=0;
 int32_t gyro_Y=0;
 int32_t gyro_Z=0;
@@ -84,7 +84,6 @@ int main(void)
 
 
 		if(I2C1_read_write_flag) read_all();
-		stabilize();
 
 	volatile int16_t podglad[7];
 	for(int i=0; i<7; i++) podglad[i] = Gyro_Acc[i];
@@ -96,6 +95,9 @@ int main(void)
 	static int kanaly[4];
 	for (int i =0; i<4;i++)
 		kanaly[i]=channels[i];
+		static double debug[3];
+		for (int i = 0; i < 3; i++)
+			debug[i] = srednia[i] / counter;
 
 	Throttle=channels[2];
 		// if failsafe occurs set motors to 0 rpm:
