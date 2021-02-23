@@ -81,6 +81,7 @@ void stabilize(){
 	corr = angles_PID();
 	if(time_rates < 30)
 		return;
+	time_rates = 0;
 	set_motors(rates_PID(corr));
 }
 
