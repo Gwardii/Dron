@@ -192,8 +192,8 @@ static ThreeD angles_PID(){
 	static ThreeD sum_err	=	{0, 0, 0};
 	PID R_PID 	=	 {5,.2,0.1};
 	PID P_PID 	=	 {5,.2,0.1};
-	err.roll	=	-((channels[0] - 1500) * MAX_ROLL_ANGLE/500. - angles.roll);
-	err.pitch	=	-((channels[1] - 1500) * MAX_PITCH_ANGLE/500. - angles.pitch);
+	err.roll	=	(channels[0] - 1500) * MAX_ROLL_ANGLE/500. - angles.roll;
+	err.pitch	=	(channels[1] - 1500) * MAX_PITCH_ANGLE/500. - angles.pitch;
 
 		//	estimate Integral by sum (I term):
 	if (sum_err.roll < 1500 && sum_err.roll > -1500)
