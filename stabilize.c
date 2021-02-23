@@ -10,8 +10,8 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART 0.99
-#define ACC_PART 0.01
+#define GYRO_PART 0.995
+#define ACC_PART .005
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
 #define GYRO_ROLL_OFFSET -28.787424166100877
@@ -31,7 +31,6 @@ extern uint16_t PWM_M1;
 extern uint16_t PWM_M2;
 extern uint16_t PWM_M3;
 extern uint16_t PWM_M4;
-
 extern uint16_t table_to_send[];
 
 typedef struct {
@@ -53,13 +52,10 @@ typedef struct{
 }ThreeD;
 
 static ThreeD angles;
-static ThreeD gangles={0,0,0};
 
 static const double rad_to_deg = 180 / atan(1) / 4;
 static double acc_angle_roll;
 static double acc_angle_pitch;
-static double gyro_angle_roll;
-static double gyro_angle_pitch;
 
 static double dt;
 
@@ -70,31 +66,29 @@ static void acc_angles();
 static void complementary_filter();
 static ThreeD median_filter(ThreeD *);
 static ThreeD angles_PID();
+static ThreeD rates_PID(ThreeD);
 static void set_motors(ThreeD);
-
+static double anti_windup(double);
 
 void stabilize(){
-	static double time;
-	time += milis();
-	if(time < 20)
+	static double time_angles, time_rates;
+	static ThreeD corr;
+	time_rates +=time_angles += milis();
+	if(time_angles < 20)
 		return;
-	time = 0;
+	time_angles = 0;
 	dt = micros();
-	// dryf zyroskopu:
-	gyro_angles(&gangles);
-	gyro_angle_roll=gangles.roll;
-	gyro_angle_pitch=gangles.pitch;
-
 	complementary_filter();
-	set_motors(angles_PID());
-
+	corr = angles_PID();
+	if(time_rates < 30)
+		return;
+	time_rates = 0;
+	set_motors(rates_PID(corr));
 	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
-	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+		table_to_send[0]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
+		table_to_send[1]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
+		table_to_send[2]=0.1*(angles.roll*GYRO_TO_DPS+32768);
+		table_to_send[3]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
 }
 
 static double micros(){
@@ -104,9 +98,8 @@ static double micros(){
 	if(t2 > t1){
 		temp = (t2 - t1)/1000000.;
 	}
-	else{
+	else
 		temp = (TIM2->ARR + 1 + t2 - t1)/1000000.;
-	}
 	t1=t2;
 	return temp;
 }
@@ -123,9 +116,8 @@ static double milis() {
 }
 
 static void gyro_angles(ThreeD *gyro_angles){
-	gyro_angles->roll 	+=	 (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt/(GYRO_TO_DPS);
-	gyro_angles->pitch 	+=	 (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt/(GYRO_TO_DPS);
-	//gyro_angles->yaw 	+=	 GYRO_TO_DPS * (Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt;
+	gyro_angles->roll 	+=	 (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt/GYRO_TO_DPS;
+	gyro_angles->pitch 	+=	 (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt/GYRO_TO_DPS;
 }
 
 static void acc_angles(){
@@ -138,16 +130,15 @@ static void acc_angles(){
 	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
 	ThreeD acc_filtered = median_filter(acc_outcome);
 	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg;
-	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
-	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
+	acc_angle_pitch	=	atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
+		//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
 
 static void complementary_filter(){
 	gyro_angles(&angles);
 	acc_angles();
 	angles.roll			=	ACC_PART * acc_angle_roll + GYRO_PART * angles.roll;
-	angles.pitch		=	ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
-
+	angles.pitch		=	-ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
 }
 
 static ThreeD median_filter(ThreeD values[]){
@@ -199,28 +190,57 @@ static ThreeD angles_PID(){
 	ThreeD corr;
 	static ThreeD last_err 	=	{0, 0, 0};
 	static ThreeD sum_err	=	{0, 0, 0};
-	PID R_PID 	=	 {10,0,0};
-	PID P_PID 	=	 {10,0,0};
-	PID Y_PID 	=	 {10,0,0};
+	PID R_PID 	=	 {5,.2,0.1};
+	PID P_PID 	=	 {5,.2,0.1};
 	err.roll	=	-((channels[0] - 1500) * MAX_ROLL_ANGLE/500. - angles.roll);
 	err.pitch	=	-((channels[1] - 1500) * MAX_PITCH_ANGLE/500. - angles.pitch);
-	err.yaw		=	-((channels[3] - 1500) * MAX_YAW_ANGLE/500. - angles.yaw);
 
 		//	estimate Integral by sum (I term):
-	sum_err.roll 	+=	 err.roll;
-	sum_err.pitch 	+=	 err.pitch;
-	sum_err.yaw	+=	 err.yaw;
+	if (sum_err.roll < 1500 && sum_err.roll > -1500)
+		sum_err.roll += err.roll;
+	if (sum_err.pitch < 1500 && sum_err.roll > -1500)
+		sum_err.pitch += err.pitch;
 
 		//	calculate corrections:
-	corr.roll	=	R_PID.P * err.roll + R_PID.I*sum_err.roll + R_PID.D * (err.roll - last_err.roll) / dt;
-	corr.pitch	=	P_PID.P * err.pitch + P_PID.I*sum_err.pitch + P_PID.D * (err.pitch - last_err.pitch) / dt;
-	corr.yaw	=	Y_PID.P * err.yaw + Y_PID.I*sum_err.yaw + Y_PID.D * (err.yaw - last_err.yaw) / dt;
+	corr.roll	=	R_PID.P * err.roll + anti_windup(R_PID.I*sum_err.roll) + anti_windup(R_PID.D * (err.roll - last_err.roll) / dt);
+	corr.pitch	=	P_PID.P * err.pitch + anti_windup(P_PID.I*sum_err.pitch) + anti_windup(P_PID.D * (err.pitch - last_err.pitch) / dt);
 
 		//	set current errors as last errors:
 	last_err.roll	=	err.roll;
 	last_err.pitch	=	err.pitch;
-	last_err.yaw	=	err.yaw;
 	return corr;
+}
+
+static ThreeD rates_PID(ThreeD settings){
+	ThreeD err;
+		ThreeD corr;
+		static ThreeD last_err 	=	{0, 0, 0};
+		static ThreeD sum_err	=	{0, 0, 0};
+		PID R_PID 	=	 {5,.2,0.1};
+		PID P_PID 	=	 {5,.2,0.1};
+		PID Y_PID 	=	 {.65,0.3,0};
+		err.roll	=	settings.roll - Gyro_Acc[0] / GYRO_TO_DPS;
+		err.pitch	=	settings.pitch - Gyro_Acc[1] / GYRO_TO_DPS;
+		err.yaw		=	(channels[3] - 1500) - Gyro_Acc[2] * 1000 / 500 *1000/32768.;
+
+			//	estimate Integral by sum (I term):
+		if (sum_err.roll < 1500 && sum_err.roll > -1500)
+			sum_err.roll += err.roll;
+		if (sum_err.pitch < 1500 && sum_err.pitch > -1500)
+			sum_err.pitch += err.pitch;
+		if (sum_err.yaw < 1500 && sum_err.yaw > -1500)
+			sum_err.yaw += err.yaw;
+
+			//	calculate corrections:
+		corr.roll	=	R_PID.P * err.roll + anti_windup(R_PID.I*sum_err.roll) + anti_windup(R_PID.D * (err.roll - last_err.roll) / dt);
+		corr.pitch	=	P_PID.P * err.pitch + anti_windup(P_PID.I*sum_err.pitch) + anti_windup(P_PID.D * (err.pitch - last_err.pitch) / dt);
+		corr.yaw	=	Y_PID.P * err.yaw + anti_windup(Y_PID.I*sum_err.yaw) + anti_windup(Y_PID.D * (err.yaw - last_err.yaw) / dt);
+
+			//	set current errors as last errors:
+		last_err.roll	=	err.roll;
+		last_err.pitch	=	err.pitch;
+		last_err.yaw	=	err.yaw;
+		return corr;
 }
 
 static void set_motors(ThreeD corr){
@@ -254,4 +274,12 @@ static void set_motors(ThreeD corr){
 		}
 		else if(PWM_M4 > 2000)
 			PWM_M4 = 2000;
+}
+
+static double anti_windup(double correction){
+	if(correction>300)
+		return 300;
+	else if(correction <-300)
+		return -300;
+	return correction;
 }
