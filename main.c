@@ -54,6 +54,8 @@ int32_t acc_Z;
 uint32_t data;
 int16_t Gyro_Acc[Gyro_Acc_Size];
 
+uint16_t table_to_send[10];
+
 uint16_t motors[4];
 
 uint16_t PWM_M1=1000;
@@ -79,7 +81,7 @@ int main(void)
 	setup();
 	setup_MPU6050();
 
-	int8_t channel_nr=0;
+	int8_t element_sent=0;
 	int8_t gyro_nr=0;
 	while (1) {
 
@@ -117,15 +119,19 @@ int main(void)
 	update_motors();
 
 	Ibus_save();
-	if (0!=new_I_Bus && 0!=txDone) {
+//	//channels printing to screen:
+//	for(int i=0;i<10;i++){
+//		table_to_send[i]=channels[i];
+//	}
+	if ( 0!=txDone) {
 			// Transmit data
 
-			print(channels[channel_nr],channel_nr,CHANNELS);
+			print(table_to_send[element_sent],element_sent,10);
 
-			channel_nr++;
+			element_sent++;
 
-			if(channel_nr>=CHANNELS){
-				channel_nr=0;
+			if(element_sent>=CHANNELS){
+				element_sent=0;
 				new_I_Bus=0;
 
 			}
