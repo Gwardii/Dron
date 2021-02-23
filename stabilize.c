@@ -65,18 +65,23 @@ static void acc_angles();
 static void complementary_filter();
 static ThreeD median_filter(ThreeD *);
 static ThreeD angles_PID();
+static ThreeD rates_PID(ThreeD);
 static void set_motors(ThreeD);
 static double anti_windup(double);
 
 void stabilize(){
-	static double time;
-	time += milis();
-	if(time < 20)
+	static double time_angles, time_rates;
+	static ThreeD corr;
+	time_rates +=time_angles += milis();
+	if(time_angles < 20)
 		return;
-	time = 0;
+	time_angles = 0;
 	dt = micros();
 	complementary_filter();
-	set_motors(angles_PID());
+	corr = angles_PID();
+	if(time_rates < 30)
+		return;
+	set_motors(rates_PID(corr));
 }
 
 static double micros(){
@@ -181,29 +186,55 @@ static ThreeD angles_PID(){
 	static ThreeD sum_err	=	{0, 0, 0};
 	PID R_PID 	=	 {5,.2,0.1};
 	PID P_PID 	=	 {5,.2,0.1};
-	PID Y_PID 	=	 {.65,0.3,0};
 	err.roll	=	-((channels[0] - 1500) * MAX_ROLL_ANGLE/500. - angles.roll);
 	err.pitch	=	-((channels[1] - 1500) * MAX_PITCH_ANGLE/500. - angles.pitch);
-	err.yaw		=	(channels[3] - 1500) - Gyro_Acc[2] * 1000 / 500 *1000/32768.;
 
 		//	estimate Integral by sum (I term):
-	if (sum_err.roll < 1500)
+	if (sum_err.roll < 1500 && sum_err.roll > -1500)
 		sum_err.roll += err.roll;
-	if (sum_err.pitch < 1500)
+	if (sum_err.pitch < 1500 && sum_err.roll > -1500)
 		sum_err.pitch += err.pitch;
-	if (sum_err.yaw < 1500)
-		sum_err.yaw += err.yaw;
 
 		//	calculate corrections:
 	corr.roll	=	R_PID.P * err.roll + anti_windup(R_PID.I*sum_err.roll) + anti_windup(R_PID.D * (err.roll - last_err.roll) / dt);
 	corr.pitch	=	P_PID.P * err.pitch + anti_windup(P_PID.I*sum_err.pitch) + anti_windup(P_PID.D * (err.pitch - last_err.pitch) / dt);
-	corr.yaw	=	Y_PID.P * err.yaw + anti_windup(Y_PID.I*sum_err.yaw) + anti_windup(Y_PID.D * (err.yaw - last_err.yaw) / dt);
 
 		//	set current errors as last errors:
 	last_err.roll	=	err.roll;
 	last_err.pitch	=	err.pitch;
-	last_err.yaw	=	err.yaw;
 	return corr;
+}
+
+static ThreeD rates_PID(ThreeD settings){
+	ThreeD err;
+		ThreeD corr;
+		static ThreeD last_err 	=	{0, 0, 0};
+		static ThreeD sum_err	=	{0, 0, 0};
+		PID R_PID 	=	 {5,.2,0.1};
+		PID P_PID 	=	 {5,.2,0.1};
+		PID Y_PID 	=	 {.65,0.3,0};
+		err.roll	=	settings.roll - Gyro_Acc[0] / GYRO_TO_DPS;
+		err.pitch	=	settings.pitch - Gyro_Acc[1] / GYRO_TO_DPS;
+		err.yaw		=	(channels[3] - 1500) - Gyro_Acc[2] * 1000 / 500 *1000/32768.;
+
+			//	estimate Integral by sum (I term):
+		if (sum_err.roll < 1500 && sum_err.roll > -1500)
+			sum_err.roll += err.roll;
+		if (sum_err.pitch < 1500 && sum_err.pitch > -1500)
+			sum_err.pitch += err.pitch;
+		if (sum_err.yaw < 1500 && sum_err.yaw > -1500)
+			sum_err.yaw += err.yaw;
+
+			//	calculate corrections:
+		corr.roll	=	R_PID.P * err.roll + anti_windup(R_PID.I*sum_err.roll) + anti_windup(R_PID.D * (err.roll - last_err.roll) / dt);
+		corr.pitch	=	P_PID.P * err.pitch + anti_windup(P_PID.I*sum_err.pitch) + anti_windup(P_PID.D * (err.pitch - last_err.pitch) / dt);
+		corr.yaw	=	Y_PID.P * err.yaw + anti_windup(Y_PID.I*sum_err.yaw) + anti_windup(Y_PID.D * (err.yaw - last_err.yaw) / dt);
+
+			//	set current errors as last errors:
+		last_err.roll	=	err.roll;
+		last_err.pitch	=	err.pitch;
+		last_err.yaw	=	err.yaw;
+		return corr;
 }
 
 static void set_motors(ThreeD corr){
