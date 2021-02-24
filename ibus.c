@@ -72,7 +72,7 @@ void USART2_IRQHandler(void) {
 		// if everything is transmitted, unable transmission interrupts:
 		if (g_txTransmitted == g_txSize) {
 			USART2->CR1 &= ~USART_CR1_TXEIE;
-			txDone = 1;
+			txDone=1;
 		}
 	}
 }

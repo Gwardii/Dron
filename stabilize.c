@@ -81,18 +81,18 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 700, 700, 400 };
 
-static PID R_PID 	=	 {0.1,0.1,0};
-static PID P_PID 	=	 {0.1,0.1,0};
-static PID Y_PID 	=	 {0.65,0.1,0};
+static PID R_PID 	=	 {0.5,0.005,0.05};
+static PID P_PID 	=	 {0.5,0.005,0.05};
+static PID Y_PID 	=	 {0.5,0.005,0.05};
 
 void stabilize(){
 
-	static double time;
-	time += milis();
-	if(time < 20){
+	static double timer;
+	timer += milis();
+	if(timer < 20){
 		return;
 	}
-	time = 0;
+	timer = 0;
 	dt = micros();
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
@@ -102,13 +102,30 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
-	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
+//	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
+//	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
+//	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
+//	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
+//	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
+//	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+
+
+//	//err. Pitch Roll Yaw
+//	table_to_send[0]=0.1*(err.pitch+32768);
+//	table_to_send[1]=0.1*(err.roll+32768);
+//	table_to_send[2]=0.1*(err.yaw+32768);
+
+
+	//wypisywanie korekcji pitch P I D i roll P I D
+	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
+	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
+	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
+	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
+
+
 }
 
 static double micros(){
@@ -220,48 +237,53 @@ static ThreeD angles_PID(){
 	sum_err.yaw		+=	 err.yaw;
 
 	//low-pass filter
-	D_corr.roll= (err.roll-last_err.roll+last_D_corr.roll)/dt/2.;
-	D_corr.pitch=(err.pitch-last_err.pitch+last_D_corr.pitch)/dt/2.;
-	D_corr.yaw=(err.yaw-last_err.yaw+last_D_corr.yaw)/dt/2.;
+	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
+	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
+	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
 
 	anti_windup();
 
 	//	calculate corrections:
-	corr.roll	=	(R_PID.P * err.roll + R_PID.I*sum_err.roll + R_PID.D *D_corr.roll)*1000/ 32768.;
-	corr.pitch	=	(P_PID.P * err.pitch + P_PID.I*sum_err.pitch + P_PID.D * D_corr.pitch)*1000/ 32768.;
-	corr.yaw = (Y_PID.P * err.yaw + Y_PID.I*sum_err.yaw+Y_PID.D*D_corr.yaw)*1000/ 32768.;
+	corr.roll	=	(R_PID.P * err.roll + R_PID.I*sum_err.roll + R_PID.D *D_corr.roll)*500/ 32768.;
+	corr.pitch	=	(P_PID.P * err.pitch + P_PID.I*sum_err.pitch + P_PID.D * D_corr.pitch)*500/ 32768.;
+	corr.yaw = (Y_PID.P * err.yaw + Y_PID.I*sum_err.yaw+Y_PID.D*D_corr.yaw)*500/ 32768.;
 
 		//	set current errors as last errors:
 	last_err.roll	=	err.roll;
 	last_err.pitch	=	err.pitch;
 	last_err.yaw	=	err.yaw;
+
+	last_D_corr.roll=D_corr.roll;
+	last_D_corr.pitch=D_corr.pitch;
+	last_D_corr.yaw=D_corr.yaw;
+
 	return corr;
 }
 static void anti_windup() {
-	static int16_t max_I_correction = 300;
-	if (sum_err.roll * R_PID.I > max_I_correction) {
-		sum_err.roll = max_I_correction / R_PID.I;
-	} else if (sum_err.roll * R_PID.I < -max_I_correction) {
-		sum_err.roll = -max_I_correction / R_PID.I;
+	int16_t max_I_correction = 300;
+	if ((sum_err.roll * R_PID.I*500/32768.) > max_I_correction) {
+		sum_err.roll = max_I_correction / R_PID.I/500.*32768.;
+	} else if ((sum_err.roll * R_PID.I*500/32768.) < -max_I_correction) {
+		sum_err.roll = -max_I_correction / R_PID.I/500.*32768.;
 	}
-	if (sum_err.pitch * P_PID.I > max_I_correction) {
-		sum_err.pitch = max_I_correction / P_PID.I;
-	} else if (sum_err.pitch * P_PID.I < -max_I_correction) {
-		sum_err.pitch = -max_I_correction / P_PID.I;
+	if ((sum_err.pitch * P_PID.I*500/32768.) > max_I_correction) {
+		sum_err.pitch = max_I_correction / P_PID.I/500.*32768.;
+	} else if ((sum_err.pitch * P_PID.I*500/32768.) < -max_I_correction) {
+		sum_err.pitch = -max_I_correction / P_PID.I/500.*32768.;
 	}
-	if (sum_err.yaw * Y_PID.I > max_I_correction) {
-		sum_err.yaw = max_I_correction / Y_PID.I;
-	} else if (sum_err.yaw * Y_PID.I < -max_I_correction) {
-		sum_err.yaw = -max_I_correction / Y_PID.I;
+	if ((sum_err.yaw * Y_PID.I*500/32768.) > max_I_correction) {
+		sum_err.yaw = max_I_correction / Y_PID.I/500.*32768.;
+	} else if ((sum_err.yaw * Y_PID.I*500/32768. )< -max_I_correction) {
+		sum_err.yaw = -max_I_correction / Y_PID.I/500.*32768.;
 	}
-	static int16_t max_D_correction = 300;
-	if(D_corr.roll>max_D_correction||D_corr.roll<-max_D_correction){
+	int16_t max_D_correction = 300;
+	if((D_corr.roll*R_PID.D*500/32768.)>max_D_correction||(D_corr.roll*R_PID.D*500/32768.)<-max_D_correction){
 		D_corr.roll=last_D_corr.roll;
 	}
-	if(D_corr.pitch>max_D_correction||D_corr.pitch<-max_D_correction){
+	if(D_corr.pitch*P_PID.D*500/32768.>max_D_correction||D_corr.pitch*P_PID.D*500/32768.<-max_D_correction){
 		D_corr.pitch=last_D_corr.pitch;
 	}
-	if(D_corr.yaw>max_D_correction||D_corr.yaw<-max_D_correction){
+	if(D_corr.yaw*Y_PID.D*500/32768.>max_D_correction||D_corr.yaw*Y_PID.D*500/32768.<-max_D_correction){
 		D_corr.yaw=last_D_corr.yaw;
 	}
 
