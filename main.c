@@ -28,7 +28,7 @@ uint8_t CHANNELS=10;		//ilosc kanalĂłw (4 potrzebne do sterownaia)
 void print(uint16_t x, int8_t nr,uint8_t enter);
 void update_motors();
 int failsafe();
-void LED ();
+
 
 // zmienne do debugowania:
 float test1;
@@ -72,7 +72,7 @@ uint8_t I2C1_read_write_flag = 1;
 
 volatile uint8_t time[] = "0000  ";
 
-extern int8_t new_I_Bus;
+
 extern volatile int32_t g_txSize;
 extern volatile int32_t g_txTransmitted;
 
@@ -87,7 +87,9 @@ int main(void)
 
 	if(I2C1_read_write_flag) {
 		read_all();
+
 	}
+
 
 	volatile int16_t podglad[7];
 	for(int i=0; i<7; i++) podglad[i] = Gyro_Acc[i];
@@ -132,20 +134,12 @@ int main(void)
 
 			if(element_sent>=CHANNELS){
 				element_sent=0;
-				new_I_Bus=0;
 
 			}
 	}
-		}
+	}
 	}
 
-void LED ()
-{
-	PWM_M1=(PWM_M1-1000)*20000;
-	PWM_M2=(PWM_M2-1000)*20000;
-	PWM_M3=(PWM_M3-1000)*20000;
-	PWM_M4=(PWM_M4-1000)*20000;
-}
 void print(uint16_t x, int8_t nr,uint8_t enter){
 
 	time[0] = '0' + (x % 10000) / 1000; //tysiace

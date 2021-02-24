@@ -66,6 +66,7 @@ static double dt;
 static double milis();
 static void gyro_angles(ThreeD*);
 static void complementary_filter();
+static void acc_angles();
 static ThreeD median_filter(ThreeD *);
 static ThreeD angles_PID();
 static void set_motors(ThreeD);
@@ -125,7 +126,7 @@ void stabilize(){
 
 
 }
-void acc_angles(){
+ static void acc_angles(){
 	static ThreeD acc_outcome[MEDIAN_BUFFOR];
 	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
 		acc_outcome[i] = acc_outcome[i-1];

@@ -9,6 +9,5 @@
 #define STABILIZE_H_
 
 void stabilize();
-void acc_angles();
 
 #endif /* STABILIZE_H_ */

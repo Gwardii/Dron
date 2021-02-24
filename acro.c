@@ -168,12 +168,12 @@ static void anti_windup() {
 static double timer(){
 	static uint16_t t1;
 	double temp;
-	uint16_t t2 = TIM2->CNT;
+	uint16_t t2 = TIM21->CNT;
 	if(t2 > t1){
-		temp = (t2 - t1)/1000000.;
+		temp = (t2 - t1)/100000.;
 	}
 	else{
-		temp = (TIM2->ARR + 1 + t2 - t1)/1000000.;
+		temp = (TIM2->ARR + 1 + t2 - t1)/100000.;
 	}
 	t1=t2;
 	return temp;

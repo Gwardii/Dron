@@ -10,15 +10,13 @@
 
 volatile int32_t g_txSize = 0;
 volatile int32_t g_txTransmitted = 0;
-volatile int8_t dataFlag = 0;
-volatile int8_t dataFlag2 = 0;
 extern uint16_t current_time;
 extern uint16_t last_time;
 
 volatile uint8_t rxBuf[32];
 volatile uint8_t rxindex = 0;
 volatile int8_t ibus_received = 0;
-int8_t new_I_Bus = 0;
+
 
 extern volatile uint8_t time[];
 extern uint8_t CHANNELS;
@@ -89,7 +87,7 @@ void Ibus_save() {
 				channels[i] = (rxBuf[2 * (i + 1) + 1] << 8)
 						+ rxBuf[2 * (i + 1)];
 			}
-			new_I_Bus = 1;
+
 			rxindex = 0;
 		}
 		//	unlock receiving data from i-Bus:

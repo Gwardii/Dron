@@ -7,7 +7,8 @@
 #include "stm32l0xx.h"
 #include "stm32l0xx_nucleo.h"
 #include "MPU6050.h"
-#include "stabilize.h"
+
+#define MEDIAN_BUFFOR 11
 
 static void setup_conf();
 static void setup_gyro();
@@ -18,8 +19,9 @@ static inline void nothing(){}
 
 void (*after_transmission)() = nothing;
 
+static void median_filter(int16_t values[]);
+
 extern int16_t Gyro_Acc[];
-extern int8_t dataFlag2;
 extern uint8_t I2C1_read_write_flag;
 
 uint8_t* read_write_tab;
@@ -44,7 +46,6 @@ void setup_MPU6050(){
 	setup_gyro();
 	setup_acc();
 }
-
 void I2C_Start(uint16_t Number_of_Bytes){
 	// Ile bajtów bêdzie wysy³ane:
 	I2C1->CR2 = ((~0xF0000 & (I2C1->CR2)) | Number_of_Bytes << 16);
@@ -54,21 +55,18 @@ void I2C_Start(uint16_t Number_of_Bytes){
 	// czekam az START w CR2 zosatnie wyczyszczony aby wys³ac kolejne bajty
 	}
 }
-
 void I2C_StartWrite(uint16_t Number_of_Bytes){
 	// transfer direction 0-write 1-read:
 	I2C1->CR2 &=~I2C_CR2_RD_WRN;
 	// inicjalizacja komunikacji:
 	I2C_Start(Number_of_Bytes);
-	}
-
+}
 void I2C_StartRead(uint16_t Number_of_Bytes){
 	// transfer direction 0-write 1-read
 	I2C1->CR2 |=I2C_CR2_RD_WRN;
 	// inicjalizacja komunikacji:
 	I2C_Start(Number_of_Bytes);
 }
-
 void gyro_read(){
 
 	// start communication:
@@ -125,13 +123,7 @@ void gyro_read(){
 	while(I2C1->CR2 & I2C_CR2_STOP){
 	// 	waiting as STOP byte will be sent
 	}
-	//	rescale data from register to format 0-2000 (represent -1000 - 1000 [deg/s] in real)
-	//Gyro_Acc[0]=Gyro_Acc[0]/32768.*1000+1000;
-	//Gyro_Acc[1]=Gyro_Acc[1]/32768.*1000+1000;
-	//Gyro_Acc[2]=Gyro_Acc[2]/32768.*1000+1000;
-	dataFlag2=1;
 }
-
 void acc_read(){
 	//	start communication:
 	I2C_StartWrite(1);
@@ -189,14 +181,7 @@ void acc_read(){
 	// 	waiting as STOP byte will be sent
 	}
 
-	//	rescale data from register to format 0-1600 (represent -8.00 - 8.00 [g] in real)
-	//Gyro_Acc[3]=Gyro_Acc[3]*100/4096+800;
-	//Gyro_Acc[4]=Gyro_Acc[4]*100/4096+800;
-	//Gyro_Acc[5]=Gyro_Acc[5]*100/4096+800;
-
-	dataFlag2=1;
 }
-
 void tem_read(){
 	//start communication:
 	I2C_StartWrite(1);
@@ -231,7 +216,6 @@ void tem_read(){
 	//	normalizing temperature value (but multiply by 100)
 	Gyro_Acc[6]=Gyro_Acc[6]*100/340+3653;
 
-	dataFlag2=1;
 }
 void read_all(){
 	after_transmission = rewrite_data;
@@ -239,7 +223,6 @@ void read_all(){
 	read(0x3B, aux_tab, 14);
 	data_flag = 1;
 }
-
 static void setup_conf(){
 	//-------main MPU6050 setting-----------
 
@@ -264,7 +247,6 @@ static void setup_conf(){
 		}
 
 }
-
 static void setup_gyro(){
 	//---------setting Gyro--------
 
@@ -326,5 +308,38 @@ static void rewrite_data(){
 		Gyro_Acc[i+3] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
-	acc_angles();
+	median_filter(Gyro_Acc);
 }
+static void median_filter(int16_t values[]){
+	static int16_t median_value[3][MEDIAN_BUFFOR];
+	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
+		median_value[0][i] = median_value[0][i-1];
+		median_value[1][i] = median_value[1][i-1];
+		median_value[2][i] = median_value[2][i-1];
+		}
+	median_value[0][0] = values[3];
+	median_value[1][0] = values[4];
+	median_value[2][0] = values[5];
+
+	for(uint8_t i=0;i<=3;i++){
+		int8_t counter;
+		for(uint8_t j=0;j<MEDIAN_BUFFOR;j++){
+			counter=0;
+			for(int k = 0; k < j; k++){
+				if(median_value[i][j] <= median_value[i][k]){
+						counter+=1;
+				}
+			}
+			for(int k = j+1; k < MEDIAN_BUFFOR; k++){
+				if(median_value[i][j] <= median_value[i][k]){
+					counter += 1;
+				}
+			}
+		}
+		if(counter == MEDIAN_BUFFOR / 2){
+			values[i]=median_value[i][counter];
+		}
+	}
+
+}
+
