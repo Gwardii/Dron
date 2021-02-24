@@ -72,9 +72,9 @@ static double dt;
 	err.yaw = (channels[3] - 1500) * 32768/500. - Gyro_Acc[2] * 1000 / Rates.yaw;
 
 	//	estimate Integral by sum (I term):
-	sum_err.roll += err.roll;
-	sum_err.pitch += err.pitch;
-	sum_err.yaw += err.yaw;
+	sum_err.roll += err.roll*dt;
+	sum_err.pitch += err.pitch*dt;
+	sum_err.yaw += err.yaw*dt;
 
 	//low-pass filter
 	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
