@@ -147,7 +147,7 @@ static double milis() {
 		temp = (t2 - t1) / 100.;
 	}
 	else{
-		temp = (TIM2->ARR + 1 + t2 - t1) / 100.;
+		temp = (TIM21->ARR + 1 + t2 - t1) / 100.;
 	}
 	t1 = t2;
 	return temp;
