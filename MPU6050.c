@@ -7,6 +7,7 @@
 #include "stm32l0xx.h"
 #include "stm32l0xx_nucleo.h"
 #include "MPU6050.h"
+#include "stabilize.h"
 
 static void setup_conf();
 static void setup_gyro();
@@ -325,4 +326,5 @@ static void rewrite_data(){
 		Gyro_Acc[i+3] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
+	acc_angles();
 }

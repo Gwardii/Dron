@@ -63,10 +63,8 @@ static double gyro_angle_pitch;
 
 static double dt;
 
-static double micros();
 static double milis();
 static void gyro_angles(ThreeD*);
-static void acc_angles();
 static void complementary_filter();
 static ThreeD median_filter(ThreeD *);
 static ThreeD angles_PID();
@@ -92,8 +90,8 @@ void stabilize(){
 	if(timer < 20){
 		return;
 	}
+	dt = timer/1000;
 	timer = 0;
-	dt = micros();
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
 	gyro_angle_roll=gangles.roll;
@@ -127,20 +125,20 @@ void stabilize(){
 
 
 }
-
-static double micros(){
-	static uint16_t t1;
-	double temp;
-	uint16_t t2 = TIM2->CNT;
-	if(t2 > t1){
-		temp = (t2 - t1)/1000000.;
+void acc_angles(){
+	static ThreeD acc_outcome[MEDIAN_BUFFOR];
+	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
+		acc_outcome[i] = acc_outcome[i-1];
 	}
-	else{
-		temp = (TIM2->ARR + 1 + t2 - t1)/1000000.;
-	}
-	t1=t2;
-	return temp;
+	acc_outcome[0].pitch 	= 	Gyro_Acc[3];
+	acc_outcome[0].roll 	= 	Gyro_Acc[4];
+	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
+	ThreeD acc_filtered = median_filter(acc_outcome);
+	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg;
+	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
+	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
+
 static double milis() {
 	static uint16_t t1;
 	double temp;
@@ -159,20 +157,6 @@ static void gyro_angles(ThreeD *gyro_angles){
 	gyro_angles->roll 	+=	 (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt/(GYRO_TO_DPS);
 	gyro_angles->pitch 	+=	 (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt/(GYRO_TO_DPS);
 	//gyro_angles->yaw 	+=	 GYRO_TO_DPS * (Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt;
-}
-
-static void acc_angles(){
-	static ThreeD acc_outcome[MEDIAN_BUFFOR];
-	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
-		acc_outcome[i] = acc_outcome[i-1];
-	}	
-	acc_outcome[0].pitch 	= 	Gyro_Acc[3];
-	acc_outcome[0].roll 	= 	Gyro_Acc[4];
-	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
-	ThreeD acc_filtered = median_filter(acc_outcome);
-	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg;
-	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
-	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
 
 static void complementary_filter(){
