@@ -47,12 +47,12 @@ void setup_MPU6050(){
 	setup_acc();
 }
 void I2C_Start(uint16_t Number_of_Bytes){
-	// Ile bajtów bêdzie wysy³ane:
+	// Ile bajtÃ³w bÃªdzie wysyÂ³ane:
 	I2C1->CR2 = ((~0xF0000 & (I2C1->CR2)) | Number_of_Bytes << 16);
-	// wys³anie bajtu START aby rozpocz¹c komunikacje:
+	// wysÂ³anie bajtu START aby rozpoczÂ¹c komunikacje:
 	I2C1->CR2 |=I2C_CR2_START;
 	while(I2C1->CR2 & I2C_CR2_START){
-	// czekam az START w CR2 zosatnie wyczyszczony aby wys³ac kolejne bajty
+	// czekam az START w CR2 zosatnie wyczyszczony aby wysÂ³ac kolejne bajty
 	}
 }
 void I2C_StartWrite(uint16_t Number_of_Bytes){
@@ -321,7 +321,7 @@ static void median_filter(int16_t values[]){
 	median_value[1][0] = values[4];
 	median_value[2][0] = values[5];
 
-	for(uint8_t i=0;i<=3;i++){
+	for(uint8_t i=0;i<3;i++){
 		int8_t counter;
 		for(uint8_t j=0;j<MEDIAN_BUFFOR;j++){
 			counter=0;
@@ -337,7 +337,7 @@ static void median_filter(int16_t values[]){
 			}
 		}
 		if(counter == MEDIAN_BUFFOR / 2){
-			values[i]=median_value[i][counter];
+			values[3+i]=median_value[i][counter];
 		}
 	}
 
