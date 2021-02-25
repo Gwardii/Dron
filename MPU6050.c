@@ -8,7 +8,7 @@
 #include "stm32l0xx_nucleo.h"
 #include "MPU6050.h"
 
-#define MEDIAN_BUFFOR 11
+#define MEDIAN_BUFFOR 3
 
 static void setup_conf();
 static void setup_gyro();
@@ -47,12 +47,12 @@ void setup_MPU6050(){
 	setup_acc();
 }
 void I2C_Start(uint16_t Number_of_Bytes){
-	// Ile bajtÃ³w bÃªdzie wysyÂ³ane:
+	// Ile bajtów bêdzie wysy³ane:
 	I2C1->CR2 = ((~0xF0000 & (I2C1->CR2)) | Number_of_Bytes << 16);
-	// wysÂ³anie bajtu START aby rozpoczÂ¹c komunikacje:
+	// wys³anie bajtu START aby rozpocz¹c komunikacje:
 	I2C1->CR2 |=I2C_CR2_START;
 	while(I2C1->CR2 & I2C_CR2_START){
-	// czekam az START w CR2 zosatnie wyczyszczony aby wysÂ³ac kolejne bajty
+	// czekam az START w CR2 zosatnie wyczyszczony aby wys³ac kolejne bajty
 	}
 }
 void I2C_StartWrite(uint16_t Number_of_Bytes){
@@ -308,7 +308,7 @@ static void rewrite_data(){
 		Gyro_Acc[i+3] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
-	median_filter(Gyro_Acc);
+	//median_filter(Gyro_Acc);
 }
 static void median_filter(int16_t values[]){
 	static int16_t median_value[3][MEDIAN_BUFFOR];

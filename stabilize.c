@@ -80,8 +80,8 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 700, 700, 400 };
 
-static PID R_PID 	=	 {0.3,0,0};
-static PID P_PID 	=	 {0.3,0,0};
+static PID R_PID 	=	 {0.1,0.02,0.01};
+static PID P_PID 	=	 {0.1,0.02,0.01};
 static PID Y_PID 	=	 {0,0,0};
 
 void stabilize(){
@@ -91,7 +91,7 @@ void stabilize(){
 	if(timer < 20){
 		return;
 	}
-	dt = timer/1000;
+	dt = timer/1000.;
 	timer = 0;
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
@@ -101,13 +101,13 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
-	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
+//	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
+//	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
+//	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
+//	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
+//	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
+//	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
 
 
 //	//err. Pitch Roll Yaw
@@ -116,13 +116,13 @@ void stabilize(){
 //	table_to_send[2]=0.1*(err.yaw+32768);
 
 
-//	//wypisywanie korekcji pitch P I D i roll P I D
-//	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
-//	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
-//	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
-//	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
-//	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
-//	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
+	//wypisywanie korekcji pitch P I D i roll P I D
+	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
+	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
+	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
+	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
 
 
 }
@@ -143,12 +143,12 @@ void stabilize(){
 static double milis() {
 	static uint16_t t1;
 	double temp;
-	uint16_t t2 = TIM21->CNT;
+	uint16_t t2 = TIM2->CNT;
 	if (t2 > t1) {
-		temp = (t2 - t1) / 100.;
+		temp = (t2 - t1) / 1000.;
 	}
 	else{
-		temp = (TIM21->ARR + 1 + t2 - t1) / 100.;
+		temp = (TIM2->ARR + 1 + t2 - t1) / 1000.;
 	}
 	t1 = t2;
 	return temp;
