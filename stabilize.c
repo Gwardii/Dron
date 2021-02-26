@@ -84,6 +84,12 @@ static PID R_PID 	=	 {0,0,0.02};
 static PID P_PID 	=	 {0,0,0.02};
 static PID Y_PID 	=	 {0,0,0};
 
+static inline void exchange(double *ex1, double *ex2){
+	double temp = *ex1;
+	*ex1 = *ex2;
+	*ex2 = temp;
+}
+
 void stabilize(){
 
 	static double timer;
@@ -168,46 +174,34 @@ static void complementary_filter(){
 }
 
 static ThreeD median_filter(ThreeD values[]){
-	ThreeD filtered_values = values[0];
-	ThreeD count;
+	ThreeD sum = {0,0,0};
+	ThreeD temp_tab[MEDIAN_BUFFOR];
+	for(int i = 0; i<MEDIAN_BUFFOR; i++){
+		temp_tab[i] = values[i];
+	}
 	for(int i = 0; i < MEDIAN_BUFFOR; i++){
-		count.roll = 0;
-		count.pitch = 0;
-		count.yaw = 0;
-		for(int j = 0; j < i; j++){
-			if(values[i].roll <= values[j].roll){
-				count.roll += 1;
+		for (int j = i + 1; j < MEDIAN_BUFFOR; j++) {
+			if (temp_tab[i].roll > temp_tab[j].roll) {
+				exchange(&temp_tab[i].roll, &temp_tab[j].roll);
 			}
-			if(values[i].pitch <= values[j].pitch){
-				count.pitch += 1;
+			if (temp_tab[i].pitch > temp_tab[j].pitch) {
+				exchange(&temp_tab[i].pitch, &temp_tab[j].pitch);
 			}
-			if(values[i].yaw <= values[j].yaw){
-				count.yaw += 1;
+			if (temp_tab[i].yaw > temp_tab[j].yaw) {
+				exchange(&temp_tab[i].yaw, &temp_tab[j].yaw);
 			}
-			}
-		for(int j = i+1; j < MEDIAN_BUFFOR; j++){
-			if(values[i].roll <= values[j].roll){
-				count.roll += 1;
-			}
-			if(values[i].pitch <= values[j].pitch){
-				count.pitch += 1;
-			}
-			if(values[i].yaw <= values[j].yaw){
-				count.yaw += 1;
-			}
-			}
-		if(count.roll == MEDIAN_BUFFOR / 2){
-			filtered_values.roll = values[i].roll;
 		}
-		if(count.pitch == MEDIAN_BUFFOR / 2){
-			filtered_values.pitch = values[i].pitch;
-		}
-		if(count.yaw == MEDIAN_BUFFOR / 2){
-			filtered_values.yaw = values[i].yaw;
-		}	
-		}
+	}
+	for(int i = MEDIAN_BUFFOR/4 - 1; i < 3*MEDIAN_BUFFOR/4; i++){
+		sum.roll += temp_tab[i].roll;
+		sum.pitch += temp_tab[i].pitch;
+		sum.yaw += temp_tab[i].yaw;
+	}
+	sum.roll /= 3*MEDIAN_BUFFOR/4 - MEDIAN_BUFFOR/4 + 1;
+	sum.pitch /= 3*MEDIAN_BUFFOR/4 - MEDIAN_BUFFOR/4 + 1;
+	sum.yaw /= 3*MEDIAN_BUFFOR/4 - MEDIAN_BUFFOR/4 + 1;
 
-	return filtered_values;
+	return sum;
 }
 
 static ThreeD angles_PID(){
