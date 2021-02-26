@@ -9,7 +9,7 @@
 #include "MPU6050.h"
 #include <math.h>
 
-#define MEDIAN_BUFFOR 3
+#define MEDIAN_BUFFOR 11
 
 static void setup_conf();
 static void setup_gyro();
@@ -322,20 +322,19 @@ static void rewrite_data(){
 		temp =0;
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
-	//median_filter(Gyro_Acc);
+	median_filter(Gyro_Acc);
 }
 static void median_filter(int16_t values[]){
-	static int16_t median_value[3][MEDIAN_BUFFOR];
-	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
-		median_value[0][i] = median_value[0][i-1];
-		median_value[1][i] = median_value[1][i-1];
-		median_value[2][i] = median_value[2][i-1];
+	static int16_t median_value[6][MEDIAN_BUFFOR];
+	for(int j=0;j<6;j++){
+		for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
+		median_value[j][i] = median_value[j][i-1];
 		}
-	median_value[0][0] = values[3];
-	median_value[1][0] = values[4];
-	median_value[2][0] = values[5];
-
-	for(uint8_t i=0;i<3;i++){
+	}
+	for(int i=0;i<6;i++){
+	median_value[i][0] = values[i];
+	}
+	for(uint8_t i=0;i<6;i++){
 		int8_t counter;
 		for(uint8_t j=0;j<MEDIAN_BUFFOR;j++){
 			counter=0;
@@ -351,7 +350,7 @@ static void median_filter(int16_t values[]){
 			}
 		}
 		if(counter == MEDIAN_BUFFOR / 2){
-			values[3+i]=median_value[i][counter];
+			values[i]=median_value[i][counter];
 		}
 	}
 

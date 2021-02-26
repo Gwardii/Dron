@@ -10,8 +10,8 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART 1
-#define ACC_PART 0
+#define GYRO_PART 0.98
+#define ACC_PART 0.02
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
 #define GYRO_ROLL_OFFSET -28.787424166100877
@@ -80,8 +80,8 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 700, 700, 400 };
 
-static PID R_PID 	=	 {0,0,0.05};
-static PID P_PID 	=	 {0,0,0.05};
+static PID R_PID 	=	 {0,0,0.02};
+static PID P_PID 	=	 {0,0,0.02};
 static PID Y_PID 	=	 {0,0,0};
 
 void stabilize(){
@@ -101,18 +101,18 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-//	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
-//	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
-//	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
-//	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
-//	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
-//	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
+	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
+	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
+	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
+	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
+	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
+	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
 
-	//err. Pitch Roll Yaw
-	table_to_send[0]=0.1*(err.pitch+32768);
-	table_to_send[1]=0.1*(err.roll+32768);
-	table_to_send[2]=0.1*(err.yaw+32768);
+//	//err. Pitch Roll Yaw
+//	table_to_send[0]=0.1*(err.pitch+32768);
+//	table_to_send[1]=0.1*(err.roll+32768);
+//	table_to_send[2]=0.1*(err.yaw+32768);
 
 
 //	//wypisywanie korekcji pitch P I D i roll P I D
@@ -134,8 +134,8 @@ void stabilize(){
 	acc_outcome[0].roll 	= 	Gyro_Acc[4];
 	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
 	ThreeD acc_filtered = median_filter(acc_outcome);
-	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg+12;
-	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
+	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg+10.2;
+	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg+1.644;
 	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
 
