@@ -322,7 +322,7 @@ static void rewrite_data(){
 		temp =0;
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
-	median_filter(Gyro_Acc);
+	//median_filter(Gyro_Acc);
 }
 static void median_filter(int16_t values[]){
 	static int16_t median_value[6][MEDIAN_BUFFOR];

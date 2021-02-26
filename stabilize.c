@@ -10,8 +10,8 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART 0.98
-#define ACC_PART 0.02
+#define GYRO_PART 0.99
+#define ACC_PART 0.01
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
 #define GYRO_ROLL_OFFSET -28.787424166100877
@@ -94,17 +94,21 @@ void stabilize(){
 
 	static double timer;
 	timer += milis();
+	if( timer <2 )
+		return;
+	acc_angles();
 	if(timer < 20){
 		return;
 	}
 	dt = timer/1000.;
 	timer = 0;
+	complementary_filter();
+
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
 	gyro_angle_roll=gangles.roll;
 	gyro_angle_pitch=gangles.pitch;
 
-	complementary_filter();
 	set_motors(angles_PID());
 
 	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
@@ -144,7 +148,6 @@ void stabilize(){
 	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg+1.644;
 	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
-
 static double milis() {
 	static uint16_t t1;
 	double temp;
@@ -167,7 +170,6 @@ static void gyro_angles(ThreeD *gyro_angles){
 
 static void complementary_filter(){
 	gyro_angles(&angles);
-	acc_angles();
 	angles.roll			=	ACC_PART * acc_angle_roll + GYRO_PART * angles.roll;
 	angles.pitch		=	ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
 
@@ -192,14 +194,15 @@ static ThreeD median_filter(ThreeD values[]){
 			}
 		}
 	}
-	for(int i = MEDIAN_BUFFOR/4 - 1; i < 3*MEDIAN_BUFFOR/4; i++){
+	double zmienna=(MEDIAN_BUFFOR/2-1 - MEDIAN_BUFFOR/2+2);
+	for(int i = MEDIAN_BUFFOR/2-2 ; i < MEDIAN_BUFFOR/2+1; i++){
 		sum.roll += temp_tab[i].roll;
 		sum.pitch += temp_tab[i].pitch;
 		sum.yaw += temp_tab[i].yaw;
 	}
-	sum.roll /= 3*MEDIAN_BUFFOR/4 - MEDIAN_BUFFOR/4 + 1;
-	sum.pitch /= 3*MEDIAN_BUFFOR/4 - MEDIAN_BUFFOR/4 + 1;
-	sum.yaw /= 3*MEDIAN_BUFFOR/4 - MEDIAN_BUFFOR/4 + 1;
+	sum.roll /= zmienna ;
+	sum.pitch /= zmienna ;
+	sum.yaw /= zmienna ;
 
 	return sum;
 }
