@@ -7,6 +7,7 @@
 #include "stm32l0xx.h"
 #include "stm32l0xx_nucleo.h"
 #include "MPU6050.h"
+#include <math.h>
 
 #define MEDIAN_BUFFOR 3
 
@@ -24,6 +25,8 @@ static void median_filter(int16_t values[]);
 extern int16_t Gyro_Acc[];
 extern uint8_t I2C1_read_write_flag;
 
+double M_rotacji[3][3]={{(4000-132)/sqrt(pow(380.53-396.675,2)+pow(-54.405-12.79,2)+pow(4000-132,2)),(-54.405-12.79)/sqrt(pow(380.53-396.675,2)+pow(-54.405-12.79,2)+pow(4000-132,2)),(380.53-396.675)/sqrt(pow(380.53-396.675,2)+pow(-54.405-12.79,2)+pow(4000-132,2))},{(-34.09-132)/sqrt(pow(-84.276-396.675,2)+pow(4075.442-12.79,2)+pow(-34.09-132,2)),(4075.442-12.79)/sqrt(pow(-84.276-396.675,2)+pow(4075.442-12.79,2)+pow(-34.09-132,2)),(-84.276-396.675)/sqrt(pow(-84.276-396.675,2)+pow(4075.442-12.79,2)+pow(-34.09-132,2))},{(115-132)/sqrt(pow(4517.7-396.675,2)+pow(-360.42-12.79,2)+pow(115-132,2)),(-360.42-12.79)/sqrt(pow(4517.7-396.675,2)+pow(-360.42-12.79,2)+pow(115-132,2)),(4517.7-396.675)/sqrt(pow(4517.7-396.675,2)+pow(-360.42-12.79,2)+pow(115-132,2))}};
+//double M_rotacji[3][3]={{1,0,0},{0,1,0},{0,0,1}};
 uint8_t* read_write_tab;
 uint8_t read_write_quantity;
 uint8_t aux_tab[14];
@@ -36,7 +39,7 @@ void I2C1_IRQHandler(){
 		i++;
 		if(i > read_write_quantity - 1){
 			i = 0;
-			(*after_transmission)();
+
 			I2C1_read_write_flag = 1;
 		}
 	}
@@ -218,7 +221,7 @@ void tem_read(){
 
 }
 void read_all(){
-	after_transmission = rewrite_data;
+	rewrite_data();
 	I2C1_read_write_flag = 0;
 	read(0x3B, aux_tab, 14);
 	data_flag = 1;
@@ -303,9 +306,20 @@ static void read(uint8_t address, uint8_t tab[], uint8_t n){
 	I2C_StartRead(n);
 }
 static void rewrite_data(){
+	int16_t aux_tab[3];
 	for(int i =0; i<3; i++){
 		Gyro_Acc[i] = read_write_tab[2*i+8] << 8 | read_write_tab[2*i+9];
-		Gyro_Acc[i+3] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
+//		Gyro_Acc[i+3] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
+		aux_tab[i] = read_write_tab[2*i] << 8 | read_write_tab[2*i+1];
+	}
+	for(int i=0;i<3;i++){
+		Gyro_Acc[i+3] = 0;
+		double temp = 0;
+		for(int j=0;j<3;j++){
+			temp += aux_tab[j] * M_rotacji[j][i];
+		}
+		Gyro_Acc[i+3] = temp;
+		temp =0;
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
 	//median_filter(Gyro_Acc);

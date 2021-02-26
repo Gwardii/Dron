@@ -10,16 +10,16 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART 0.99
-#define ACC_PART 0.01
+#define GYRO_PART 1
+#define ACC_PART 0
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
 #define GYRO_ROLL_OFFSET -28.787424166100877
 #define GYRO_PITCH_OFFSET 23.64611577126087
 #define GYRO_YAW_OFFSET -45.658468209991462
 
-#define MAX_ROLL_ANGLE 20
-#define MAX_PITCH_ANGLE 20
+#define MAX_ROLL_ANGLE 10
+#define MAX_PITCH_ANGLE 10
 
 
 #define MEDIAN_BUFFOR 11
@@ -80,8 +80,8 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 700, 700, 400 };
 
-static PID R_PID 	=	 {0.1,0.02,0.01};
-static PID P_PID 	=	 {0.1,0.02,0.01};
+static PID R_PID 	=	 {0,0,0.05};
+static PID P_PID 	=	 {0,0,0.05};
 static PID Y_PID 	=	 {0,0,0};
 
 void stabilize(){
@@ -109,20 +109,19 @@ void stabilize(){
 //	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
 //	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
 
+	//err. Pitch Roll Yaw
+	table_to_send[0]=0.1*(err.pitch+32768);
+	table_to_send[1]=0.1*(err.roll+32768);
+	table_to_send[2]=0.1*(err.yaw+32768);
 
-//	//err. Pitch Roll Yaw
-//	table_to_send[0]=0.1*(err.pitch+32768);
-//	table_to_send[1]=0.1*(err.roll+32768);
-//	table_to_send[2]=0.1*(err.yaw+32768);
 
-
-	//wypisywanie korekcji pitch P I D i roll P I D
-	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
-	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
-	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
-	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
-	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
-	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
+//	//wypisywanie korekcji pitch P I D i roll P I D
+//	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
+//	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+//	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+//	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
+//	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
+//	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
 
 
 }
@@ -135,7 +134,7 @@ void stabilize(){
 	acc_outcome[0].roll 	= 	Gyro_Acc[4];
 	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
 	ThreeD acc_filtered = median_filter(acc_outcome);
-	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg;
+	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg+12;
 	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg;
 	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
 }
@@ -223,10 +222,14 @@ static ThreeD angles_PID(){
 	sum_err.pitch 	+=	 err.pitch*dt;
 	sum_err.yaw		+=	 err.yaw*dt;
 
-	//low-pass filter
-	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
-	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
-	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
+//	//low-pass filter
+//	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
+//	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
+//	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
+
+	D_corr.roll= (err.roll-last_err.roll)/dt;
+	D_corr.pitch=(err.pitch-last_err.pitch)/dt;
+	D_corr.yaw=(err.yaw-last_err.yaw)/dt;
 
 	anti_windup();
 

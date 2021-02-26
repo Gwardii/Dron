@@ -171,5 +171,6 @@ static void setup_NVIC(){
 
 	//	TIM2 enabling:
 	TIM2->CR1 |=TIM_CR1_CEN;
+	TIM21->CR1 |=TIM_CR1_CEN;
 
 }

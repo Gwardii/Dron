@@ -28,6 +28,8 @@ extern uint16_t PWM_M2;
 extern uint16_t PWM_M3;
 extern uint16_t PWM_M4;
 
+extern uint16_t table_to_send[];
+
 typedef struct {
 	double P;
 	double I;
@@ -48,14 +50,14 @@ typedef struct {
 
 //---User defines maximum speed of spinning [deg/s]----
 
-static Three Rates = { 350, 350, 300 };
+static Three Rates = { 500, 500, 400 };
 
-static PID R_PID = { 0.5, 0.02, 0.01 };
-static PID P_PID = { 0.5, 0.02, 0.01};
-static PID Y_PID = { 0.65, 0.02, 0.005};
+static PID R_PID = { 0.6, 0.8, 0.013 };
+static PID P_PID = { 0.6, 0.8, 0.013};
+static PID Y_PID = { 3, 0.05, 0.005};
 
 static Three err={0,0,0};
-static Three sum_err = { 0, 0, 0 };
+static ThreeD sum_err = { 0, 0, 0 };
 static Three last_err = {0,0,0};
 static Three D_corr={0,0,0};
 static Three last_D_corr={0,0,0};
@@ -65,7 +67,13 @@ static double dt;
  void acro() {
 	Three corr={0,0,0};
 
-	dt=timer();
+	static double tim;
+	tim += timer();
+	if (tim < 0.02) {
+		return;
+	}
+	dt = tim;
+	tim = 0;
 
 	err.roll = (channels[0] - 1500) * 32768/500. - Gyro_Acc[0] * 1000 / Rates.roll;
 	err.pitch = (channels[1] - 1500) * 32768/500. - Gyro_Acc[1] * 1000 / Rates.pitch;
@@ -76,10 +84,15 @@ static double dt;
 	sum_err.pitch += err.pitch*dt;
 	sum_err.yaw += err.yaw*dt;
 
-	//low-pass filter
-	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
-	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
-	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
+//	//low-pass filter
+//	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
+//	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
+//	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
+
+	D_corr.roll = (err.roll - last_err.roll) / dt;
+	D_corr.pitch = (err.pitch - last_err.pitch) / dt;
+	D_corr.yaw = (err.yaw - last_err.yaw) / dt;
+
 
 	anti_windup();
 
@@ -132,6 +145,22 @@ static double dt;
 	}
 	else if(PWM_M4 > 2000)
 		PWM_M4 = 2000;
+
+
+//		//err. Pitch Roll Yaw
+//		table_to_send[0]=0.1*(err.pitch+32768);
+//		table_to_send[1]=0.1*(err.roll+32768);
+//		table_to_send[2]=0.1*(err.yaw+32768);
+
+
+		//wypisywanie korekcji pitch P I D i roll P I D
+		table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
+		table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+		table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+		table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
+		table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
+		table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
+
 }
 
 static void anti_windup() {

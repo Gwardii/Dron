@@ -28,7 +28,7 @@ uint8_t CHANNELS=10;		//ilosc kanalĂłw (4 potrzebne do sterownaia)
 void print(uint16_t x, int8_t nr,uint8_t enter);
 void update_motors();
 int failsafe();
-
+static double timer();
 
 // zmienne do debugowania:
 float test1;
@@ -83,21 +83,28 @@ int main(void)
 
 	int8_t element_sent=0;
 	int8_t gyro_nr=0;
+
+	static double srednia[3]={0};
+	static double counter = 0;
+	static double suma[3]={0};
+
 	while (1) {
+		static double tim2;
 
-	if(I2C1_read_write_flag) {
+		tim2+=timer();
+
+	if(I2C1_read_write_flag && tim2>0.02) {
 		read_all();
-
+		tim2=0;
 	}
-
+	counter++;
+	for(int i=0;i<3;i++){
+		suma[i] += Gyro_Acc[i+3];
+		srednia[i] = suma[i]/counter;
+	}
 
 	volatile int16_t podglad[7];
 	for(int i=0; i<7; i++) podglad[i] = Gyro_Acc[i];
-	static int counter = 0;
-	static double srednia[3] = {0};
-	for (int i = 0;i<3;i++)
-		srednia[i] += podglad[i];
-	counter++;
 	static int kanaly[4];
 	for (int i =0; i<4;i++)
 		kanaly[i]=channels[i];
@@ -184,4 +191,17 @@ int failsafe(){
 	else{
 	return(0);
 	}
+}
+static double timer(){
+	static uint16_t t1;
+	double temp;
+	uint16_t t2 = TIM2->CNT;
+	if(t2 > t1){
+		temp = (t2 - t1)/1000000.;
+	}
+	else{
+		temp = (TIM2->ARR + 1 + t2 - t1)/1000000.;
+	}
+	t1=t2;
+	return temp;
 }
