@@ -22,20 +22,10 @@
 
 uint8_t CHANNELS=10;		//ilosc kanalĂłw (4 potrzebne do sterownaia)
 
-
-
-
 void print(uint16_t x, int8_t nr,uint8_t enter);
 void update_motors();
 int failsafe();
 static double timer();
-
-// zmienne do debugowania:
-float test1;
-float test2;
-float test3;
-
-
 
 // global data
 #define  Gyro_Acc_Size 7
@@ -93,7 +83,7 @@ int main(void)
 
 		tim2+=timer();
 
-	if(I2C1_read_write_flag && tim2>0.02) {
+	if(I2C1_read_write_flag && tim2>0.005) {
 		read_all();
 		tim2=0;
 	}
@@ -149,7 +139,7 @@ int main(void)
 
 void print(uint16_t x, int8_t nr,uint8_t enter){
 
-	time[0] = '0' + (x % 10000) / 1000; //tysiace
+	time[0] = '0' + (x % 10000)/1000; //tysiace
 	time[1] = '0' + (x % 1000)/100;		//setki
 	time[2] = '0' + (x % 100)/10;		//dziesi
 	time[3] = '0' + (x % 10);			//jednosci
@@ -167,11 +157,6 @@ void print(uint16_t x, int8_t nr,uint8_t enter){
 	txDone=0;
 	USART2->CR1 |= USART_CR1_TXEIE;
 }
-
-
-
-
-
 
 void update_motors(){
 	TIM2->CCR1 =PWM_M1 - 1; 			//wypelneinie motor 1

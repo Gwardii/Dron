@@ -10,16 +10,16 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART 0.99
-#define ACC_PART 0.01
+#define GYRO_PART 0.983
+#define ACC_PART 0.017
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
 #define GYRO_ROLL_OFFSET -28.787424166100877
 #define GYRO_PITCH_OFFSET 23.64611577126087
 #define GYRO_YAW_OFFSET -45.658468209991462
 
-#define MAX_ROLL_ANGLE 10
-#define MAX_PITCH_ANGLE 10
+#define MAX_ROLL_ANGLE 25
+#define MAX_PITCH_ANGLE 25
 
 
 #define MEDIAN_BUFFOR 11
@@ -80,35 +80,25 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 700, 700, 400 };
 
-static PID R_PID 	=	 {0,0,0.02};
-static PID P_PID 	=	 {0,0,0.02};
+static PID R_PID 	=	 {0.1,0.01,1.38};
+static PID P_PID 	=	 {0.1,0.01,1.38};
 static PID Y_PID 	=	 {0,0,0};
-
-static inline void exchange(double *ex1, double *ex2){
-	double temp = *ex1;
-	*ex1 = *ex2;
-	*ex2 = temp;
-}
 
 void stabilize(){
 
 	static double timer;
 	timer += milis();
-	if( timer <2 )
-		return;
-	acc_angles();
 	if(timer < 20){
 		return;
 	}
 	dt = timer/1000.;
 	timer = 0;
-	complementary_filter();
-
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
 	gyro_angle_roll=gangles.roll;
 	gyro_angle_pitch=gangles.pitch;
 
+	complementary_filter();
 	set_motors(angles_PID());
 
 	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
@@ -124,7 +114,6 @@ void stabilize(){
 //	table_to_send[1]=0.1*(err.roll+32768);
 //	table_to_send[2]=0.1*(err.yaw+32768);
 
-
 //	//wypisywanie korekcji pitch P I D i roll P I D
 //	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
 //	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
@@ -136,18 +125,23 @@ void stabilize(){
 
 }
  static void acc_angles(){
-	static ThreeD acc_outcome[MEDIAN_BUFFOR];
-	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
-		acc_outcome[i] = acc_outcome[i-1];
-	}
-	acc_outcome[0].pitch 	= 	Gyro_Acc[3];
-	acc_outcome[0].roll 	= 	Gyro_Acc[4];
-	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
-	ThreeD acc_filtered = median_filter(acc_outcome);
-	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg+10.2;
-	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg+1.644;
-	//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
+//	static ThreeD acc_outcome[MEDIAN_BUFFOR];
+//	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
+//		acc_outcome[i] = acc_outcome[i-1];
+//	}
+//	acc_outcome[0].pitch 	= 	Gyro_Acc[3];
+//	acc_outcome[0].roll 	= 	Gyro_Acc[4];
+//	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
+//	ThreeD acc_filtered = median_filter(acc_outcome);
+//	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg+10.2;
+//	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg+1.644;
+//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
+
+acc_angle_roll 	= 	atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg+10.2;
+acc_angle_pitch	=	-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg+1.644;
+
 }
+
 static double milis() {
 	static uint16_t t1;
 	double temp;
@@ -170,41 +164,52 @@ static void gyro_angles(ThreeD *gyro_angles){
 
 static void complementary_filter(){
 	gyro_angles(&angles);
+	acc_angles();
 	angles.roll			=	ACC_PART * acc_angle_roll + GYRO_PART * angles.roll;
 	angles.pitch		=	ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
-
 }
 
 static ThreeD median_filter(ThreeD values[]){
-	ThreeD sum = {0,0,0};
-	ThreeD temp_tab[MEDIAN_BUFFOR];
-	for(int i = 0; i<MEDIAN_BUFFOR; i++){
-		temp_tab[i] = values[i];
-	}
+	ThreeD filtered_values = values[0];
+	ThreeD count;
 	for(int i = 0; i < MEDIAN_BUFFOR; i++){
-		for (int j = i + 1; j < MEDIAN_BUFFOR; j++) {
-			if (temp_tab[i].roll > temp_tab[j].roll) {
-				exchange(&temp_tab[i].roll, &temp_tab[j].roll);
+		count.roll = 0;
+		count.pitch = 0;
+		count.yaw = 0;
+		for(int j = 0; j < i; j++){
+			if(values[i].roll <= values[j].roll){
+				count.roll += 1;
 			}
-			if (temp_tab[i].pitch > temp_tab[j].pitch) {
-				exchange(&temp_tab[i].pitch, &temp_tab[j].pitch);
+			if(values[i].pitch <= values[j].pitch){
+				count.pitch += 1;
 			}
-			if (temp_tab[i].yaw > temp_tab[j].yaw) {
-				exchange(&temp_tab[i].yaw, &temp_tab[j].yaw);
+			if(values[i].yaw <= values[j].yaw){
+				count.yaw += 1;
 			}
+			}
+		for(int j = i+1; j < MEDIAN_BUFFOR; j++){
+			if(values[i].roll <= values[j].roll){
+				count.roll += 1;
+			}
+			if(values[i].pitch <= values[j].pitch){
+				count.pitch += 1;
+			}
+			if(values[i].yaw <= values[j].yaw){
+				count.yaw += 1;
+			}
+			}
+		if(count.roll == MEDIAN_BUFFOR / 2){
+			filtered_values.roll = values[i].roll;
 		}
-	}
-	double zmienna=(MEDIAN_BUFFOR/2-1 - MEDIAN_BUFFOR/2+2);
-	for(int i = MEDIAN_BUFFOR/2-2 ; i < MEDIAN_BUFFOR/2+1; i++){
-		sum.roll += temp_tab[i].roll;
-		sum.pitch += temp_tab[i].pitch;
-		sum.yaw += temp_tab[i].yaw;
-	}
-	sum.roll /= zmienna ;
-	sum.pitch /= zmienna ;
-	sum.yaw /= zmienna ;
+		if(count.pitch == MEDIAN_BUFFOR / 2){
+			filtered_values.pitch = values[i].pitch;
+		}
+		if(count.yaw == MEDIAN_BUFFOR / 2){
+			filtered_values.yaw = values[i].yaw;
+		}	
+		}
 
-	return sum;
+	return filtered_values;
 }
 
 static ThreeD angles_PID(){
@@ -224,8 +229,8 @@ static ThreeD angles_PID(){
 //	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
 //	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
 
-	D_corr.roll= (err.roll-last_err.roll)/dt;
-	D_corr.pitch=(err.pitch-last_err.pitch)/dt;
+	D_corr.roll= -Gyro_Acc[0];
+	D_corr.pitch=-Gyro_Acc[1];
 	D_corr.yaw=(err.yaw-last_err.yaw)/dt;
 
 	anti_windup();
@@ -235,7 +240,7 @@ static ThreeD angles_PID(){
 	corr.pitch	=	(P_PID.P * err.pitch + P_PID.I*sum_err.pitch + P_PID.D * D_corr.pitch)*500/ 32768.;
 	corr.yaw = (Y_PID.P * err.yaw + Y_PID.I*sum_err.yaw+Y_PID.D*D_corr.yaw)*500/ 32768.;
 
-		//	set current errors as last errors:
+	//	set current errors as last errors:
 	last_err.roll	=	err.roll;
 	last_err.pitch	=	err.pitch;
 	last_err.yaw	=	err.yaw;

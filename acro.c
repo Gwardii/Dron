@@ -93,7 +93,6 @@ static double dt;
 	D_corr.pitch = (err.pitch - last_err.pitch) / dt;
 	D_corr.yaw = (err.yaw - last_err.yaw) / dt;
 
-
 	anti_windup();
 
 	//	calculate corrections:
