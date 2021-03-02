@@ -11,15 +11,6 @@
 #include "MPU6050.h"
 #include "acro.h"
 
-static double timer();
-static void anti_windup();
-
-#define GYRO_ROLL_OFFSET 0
-#define GYRO_PITCH_OFFSET 0
-#define GYRO_YAW_OFFSET 0
-
-#define MEDIAN_BUFFOR 5
-
 extern int16_t Gyro_Acc[];
 extern int16_t channels[];
 extern int16_t Throttle;
@@ -27,8 +18,12 @@ extern uint16_t PWM_M1;
 extern uint16_t PWM_M2;
 extern uint16_t PWM_M3;
 extern uint16_t PWM_M4;
-
 extern uint16_t table_to_send[];
+
+
+static double timer();
+static void anti_windup();
+static void median_filter(int16_t median_values[6][MEDIAN_BUFFOR]);
 
 typedef struct {
 	double P;
@@ -54,7 +49,7 @@ static Three Rates = { 500, 500, 400 };
 
 static PID R_PID = { 0.6, 0.8, 0.013 };
 static PID P_PID = { 0.6, 0.8, 0.013};
-static PID Y_PID = { 3, 0.05, 0.005};
+static PID Y_PID = { 2, 0.4, 0.001};
 
 static Three err={0,0,0};
 static ThreeD sum_err = { 0, 0, 0 };
@@ -75,9 +70,11 @@ static double dt;
 	dt = tim;
 	tim = 0;
 
-	err.roll = (channels[0] - 1500) * 32768/500. - Gyro_Acc[0] * 1000 / Rates.roll;
-	err.pitch = (channels[1] - 1500) * 32768/500. - Gyro_Acc[1] * 1000 / Rates.pitch;
-	err.yaw = (channels[3] - 1500) * 32768/500. - Gyro_Acc[2] * 1000 / Rates.yaw;
+	median_filter(median_values);
+
+	err.roll = (channels[0] - 1500) * 32768/500. - (Gyro_Acc[0]-GYRO_ROLL_OFFSET) * 1000 / Rates.roll;
+	err.pitch = (channels[1] - 1500) * 32768/500. - (Gyro_Acc[1]-GYRO_PITCH_OFFSET) * 1000 / Rates.pitch;
+	err.yaw = (channels[3] - 1500) * 32768/500. - (Gyro_Acc[2]-GYRO_YAW_OFFSET) * 1000 / Rates.yaw;
 
 	//	estimate Integral by sum (I term):
 	sum_err.roll += err.roll*dt;
@@ -205,4 +202,27 @@ static double timer(){
 	}
 	t1=t2;
 	return temp;
+}
+static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]) {
+	for (uint8_t i = 0; i < 6; i++) {
+		int8_t counter;
+		for (uint8_t j = 0; j < MEDIAN_BUFFOR; j++) {
+			counter = 0;
+			for (int k = 0; k < j; k++) {
+				if (median_values[i][j] <= median_values[i][k]) {
+					counter += 1;
+				}
+			}
+			for (int k = j + 1; k < MEDIAN_BUFFOR; k++) {
+				if (median_values[i][j] <= median_values[i][k]) {
+					counter += 1;
+				}
+			}
+			if (counter >= MEDIAN_BUFFOR / 4
+					&& counter < MEDIAN_BUFFOR * 3 / 4) {
+				Gyro_Acc[i] += median_values[i][j];
+			}
+		}
+		Gyro_Acc[i] /= MEDIAN_BUFFOR/2;
+	}
 }

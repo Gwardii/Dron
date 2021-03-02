@@ -30,24 +30,10 @@ static double timer();
 // global data
 #define  Gyro_Acc_Size 7
 
-uint16_t current_time=0;
-uint16_t last_time=0;
-uint16_t gap_time=0;
 uint8_t txDone=1;
 uint16_t channels[14];
-int32_t gyro_X=0;
-int32_t gyro_Y=0;
-int32_t gyro_Z=0;
-int32_t acc_X;
-int32_t acc_Y;
-int32_t acc_Z;
-uint32_t data;
 int16_t Gyro_Acc[Gyro_Acc_Size];
-
 uint16_t table_to_send[10];
-
-uint16_t motors[4];
-
 uint16_t PWM_M1=1000;
 uint16_t PWM_M2=1000;
 uint16_t PWM_M3=1000;
@@ -74,24 +60,16 @@ int main(void)
 	int8_t element_sent=0;
 	int8_t gyro_nr=0;
 
-	static double srednia[3]={0};
-	static double counter = 0;
-	static double suma[3]={0};
-
 	while (1) {
 		static double tim2;
 
 		tim2+=timer();
 
-	if(I2C1_read_write_flag && tim2>0.005) {
+	if(I2C1_read_write_flag && tim2>0.02/MEDIAN_BUFFOR) {
 		read_all();
 		tim2=0;
 	}
-	counter++;
-	for(int i=0;i<3;i++){
-		suma[i] += Gyro_Acc[i+3];
-		srednia[i] = suma[i]/counter;
-	}
+
 
 	volatile int16_t podglad[7];
 	for(int i=0; i<7; i++) podglad[i] = Gyro_Acc[i];

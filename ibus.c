@@ -10,18 +10,16 @@
 
 volatile int32_t g_txSize = 0;
 volatile int32_t g_txTransmitted = 0;
-extern uint16_t current_time;
-extern uint16_t last_time;
-
 volatile uint8_t rxBuf[32];
 volatile uint8_t rxindex = 0;
 volatile int8_t ibus_received = 0;
-
+ uint16_t current_time;
+ uint16_t last_time;
+ uint16_t gap_time;
 
 extern volatile uint8_t time[];
 extern uint8_t CHANNELS;
 extern uint16_t channels[];
-extern uint8_t gap_time;
 extern uint8_t txDone;
 
 void USART2_IRQHandler(void) {
@@ -34,7 +32,7 @@ void USART2_IRQHandler(void) {
 
 		current_time = TIM21->CNT;
 		if (current_time < last_time) {
-			gap_time = current_time - last_time + TIM2->ARR;
+			gap_time = current_time - last_time + TIM21->ARR;
 		} else {
 			gap_time = current_time - last_time;
 		}

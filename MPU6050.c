@@ -9,9 +9,6 @@
 #include "MPU6050.h"
 #include <math.h>
 
-// MUST BE DIVISIBLE BY 4  How many samples for median filter (average is computed from a half of samples):
-#define MEDIAN_BUFFOR 4
-
 static void setup_conf();
 static void setup_gyro();
 static void setup_acc();
@@ -21,12 +18,14 @@ static inline void nothing(){}
 
 void (*after_transmission)() = nothing;
 
-static void median_filter(int16_t values[]);
+static void median_filter_values(int16_t values[]);
 
 extern int16_t Gyro_Acc[];
 extern uint8_t I2C1_read_write_flag;
 
-double M_rotacji[3][3]={{(4000-132)/sqrt(pow(380.53-396.675,2)+pow(-54.405-12.79,2)+pow(4000-132,2)),(-54.405-12.79)/sqrt(pow(380.53-396.675,2)+pow(-54.405-12.79,2)+pow(4000-132,2)),(380.53-396.675)/sqrt(pow(380.53-396.675,2)+pow(-54.405-12.79,2)+pow(4000-132,2))},{(-34.09-132)/sqrt(pow(-84.276-396.675,2)+pow(4075.442-12.79,2)+pow(-34.09-132,2)),(4075.442-12.79)/sqrt(pow(-84.276-396.675,2)+pow(4075.442-12.79,2)+pow(-34.09-132,2)),(-84.276-396.675)/sqrt(pow(-84.276-396.675,2)+pow(4075.442-12.79,2)+pow(-34.09-132,2))},{(115-132)/sqrt(pow(4517.7-396.675,2)+pow(-360.42-12.79,2)+pow(115-132,2)),(-360.42-12.79)/sqrt(pow(4517.7-396.675,2)+pow(-360.42-12.79,2)+pow(115-132,2)),(4517.7-396.675)/sqrt(pow(4517.7-396.675,2)+pow(-360.42-12.79,2)+pow(115-132,2))}};
+int16_t median_values[6][MEDIAN_BUFFOR];
+
+double M_rotacji[3][3]={{(ACC_CALIBRATION_X_X-ACC_PITCH_OFFSET)/sqrt(pow(ACC_CALIBRATION_X_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_X_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_X_X-ACC_PITCH_OFFSET,2)),(ACC_CALIBRATION_X_Y-ACC_ROLL_OFFSET)/sqrt(pow(ACC_CALIBRATION_X_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_X_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_X_X-ACC_PITCH_OFFSET,2)),(ACC_CALIBRATION_X_Z-ACC_YAW_OFFSET)/sqrt(pow(ACC_CALIBRATION_X_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_X_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_X_X-ACC_PITCH_OFFSET,2))},{(ACC_CALIBRATION_Y_X-ACC_PITCH_OFFSET)/sqrt(pow(ACC_CALIBRATION_Y_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_Y_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_Y_X-ACC_PITCH_OFFSET,2)),(ACC_CALIBRATION_Y_Y-ACC_ROLL_OFFSET)/sqrt(pow(ACC_CALIBRATION_Y_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_Y_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_Y_X-ACC_PITCH_OFFSET,2)),(ACC_CALIBRATION_Y_Z-ACC_YAW_OFFSET)/sqrt(pow(ACC_CALIBRATION_Y_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_Y_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_Y_X-ACC_PITCH_OFFSET,2))},{(ACC_CALIBRATION_Z_X-ACC_PITCH_OFFSET)/sqrt(pow(ACC_CALIBRATION_Z_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_Z_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_Z_X-ACC_PITCH_OFFSET,2)),(ACC_CALIBRATION_Z_Y-ACC_ROLL_OFFSET)/sqrt(pow(ACC_CALIBRATION_Z_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_Z_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_Z_X-ACC_PITCH_OFFSET,2)),(ACC_CALIBRATION_Z_Z-ACC_YAW_OFFSET)/sqrt(pow(ACC_CALIBRATION_Z_Z-ACC_YAW_OFFSET,2)+pow(ACC_CALIBRATION_Z_Y-ACC_ROLL_OFFSET,2)+pow(ACC_CALIBRATION_Z_X-ACC_PITCH_OFFSET,2))}};
 //double M_rotacji[3][3]={{1,0,0},{0,1,0},{0,0,1}};
 uint8_t* read_write_tab;
 uint8_t read_write_quantity;
@@ -323,65 +322,16 @@ static void rewrite_data(){
 		temp =0;
 	}
 	Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];
-	median_filter(Gyro_Acc);
+	median_filter_values(Gyro_Acc);
 }
-static void median_filter(int16_t values[]) {
-	static int16_t median_value[6][MEDIAN_BUFFOR];
+static void median_filter_values(int16_t values[]) {
 	for (int j = 0; j < 6; j++) {
 		for (int i = MEDIAN_BUFFOR - 1; i > 0; i--) {
-			median_value[j][i] = median_value[j][i - 1];
+			median_values[j][i] = median_values[j][i - 1];
 		}
 	}
 	for (int i = 0; i < 6; i++) {
-		median_value[i][0] = values[i];
+		median_values[i][0] = values[i];
 		values[i] = 0;
 	}
-
-	for (uint8_t i = 0; i < 6; i++) {
-		int8_t counter;
-		for (uint8_t j = 0; j < MEDIAN_BUFFOR; j++) {
-			counter = 0;
-			for (int k = 0; k < j; k++) {
-				if (median_value[i][j] <= median_value[i][k]) {
-					counter += 1;
-				}
-			}
-			for (int k = j + 1; k < MEDIAN_BUFFOR; k++) {
-				if (median_value[i][j] <= median_value[i][k]) {
-					counter += 1;
-				}
-			}
-			if (counter >= MEDIAN_BUFFOR / 4
-					&& counter < MEDIAN_BUFFOR * 3 / 4) {
-				values[i] += median_value[i][j];
-			}
-		}
-		values[i] /= MEDIAN_BUFFOR/2;
-	}
 }
-
-//static void median_filter(int16_t values[]) {
-//	static int16_t median_values[6][MEDIAN_BUFFOR];
-//	for (int j = 0; j < 6; j++) {
-//		for (int i = MEDIAN_BUFFOR - 1; i > 0; i--) {
-//			median_values[j][i] = median_values[j][i - 1];
-//		}
-//	}
-//	for (int i = 0; i < 6; i++) {
-//		median_values[i][0] = values[i];
-//	}
-//	for (int i = 0; i < MEDIAN_BUFFOR; i++) {
-//		for (int j = i + 1; j < MEDIAN_BUFFOR; j++) {
-//			for (int k = 0; k < 6; k++) {
-//				if (median_values[k][i] > median_values[k][j]) {
-//					exchange(&median_values[k][i] > &median_values[k][j]);
-//				}
-//			}
-//		}
-//	}
-//}
-//static inline void exchange(double *ex1, double *ex2){
-//	double temp = *ex1;
-//	*ex1 = *ex2;
-//	*ex2 = temp;
-//}

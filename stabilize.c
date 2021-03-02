@@ -1,8 +1,6 @@
 /*
  * stabilize.c
- *
- *  Created on: 04.01.2021
- *      Author: filip
+ *s
  */
 #include <math.h>
 #include "stm32l0xx.h"
@@ -10,19 +8,12 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-#define GYRO_PART 0.983
-#define ACC_PART 0.017
+#define GYRO_PART 0.975
+#define ACC_PART 0.025
 #define GYRO_TO_DPS 32768/1000. // convert gyro register into degrees per second unit
 
-#define GYRO_ROLL_OFFSET -28.787424166100877
-#define GYRO_PITCH_OFFSET 23.64611577126087
-#define GYRO_YAW_OFFSET -45.658468209991462
-
-#define MAX_ROLL_ANGLE 25
-#define MAX_PITCH_ANGLE 25
-
-
-#define MEDIAN_BUFFOR 11
+#define MAX_ROLL_ANGLE 15
+#define MAX_PITCH_ANGLE 15
 
 extern int16_t Gyro_Acc[];
 extern int16_t channels[];
@@ -31,8 +22,8 @@ extern uint16_t PWM_M1;
 extern uint16_t PWM_M2;
 extern uint16_t PWM_M3;
 extern uint16_t PWM_M4;
-
 extern uint16_t table_to_send[];
+
 
 typedef struct {
 	double P;
@@ -67,10 +58,10 @@ static double milis();
 static void gyro_angles(ThreeD*);
 static void complementary_filter();
 static void acc_angles();
-static ThreeD median_filter(ThreeD *);
 static ThreeD angles_PID();
 static void set_motors(ThreeD);
 static void anti_windup();
+static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]);
 
 // err values - difference between set value and measured value:
 static ThreeD err={0,0,0};
@@ -78,11 +69,15 @@ static ThreeD sum_err	=	{0, 0, 0};
 static ThreeD last_err 	=	{0, 0, 0};
 static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
-static Three Rates = { 700, 700, 400 };
+static Three Rates = { 400, 400, 400 };
 
-static PID R_PID 	=	 {0.1,0.01,1.38};
-static PID P_PID 	=	 {0.1,0.01,1.38};
-static PID Y_PID 	=	 {0,0,0};
+static PID R_PID 	=	 {0.09,0.001,0.016};
+static PID P_PID 	=	 {0.09,0.001,0.016};
+static PID Y_PID 	=	 {2,0.4,0.005};
+
+static double srednia[6]={0};
+static double counter = 0;
+static double suma[6]={0};
 
 void stabilize(){
 
@@ -93,6 +88,13 @@ void stabilize(){
 	}
 	dt = timer/1000.;
 	timer = 0;
+
+	median_filter(median_values);
+	counter++;
+		for(int i=0;i<6;i++){
+			suma[i] += Gyro_Acc[i];
+			srednia[i] = suma[i]/counter;
+		}
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
 	gyro_angle_roll=gangles.roll;
@@ -101,47 +103,36 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
-	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
-	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
-	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
+//	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
+//	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
+//	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
+//	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
+//	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
+//	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
+
 
 //	//err. Pitch Roll Yaw
 //	table_to_send[0]=0.1*(err.pitch+32768);
 //	table_to_send[1]=0.1*(err.roll+32768);
 //	table_to_send[2]=0.1*(err.yaw+32768);
 
-//	//wypisywanie korekcji pitch P I D i roll P I D
-//	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
-//	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
-//	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
-//	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
-//	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
-//	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
-
-
+	//wypisywanie korekcji pitch P I D i roll P I D
+	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
+	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
+	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
+	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
+	table_to_send[6]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
+	table_to_send[7]=(angles.roll)/MAX_ROLL_ANGLE*50+1000;
+	table_to_send[8]=channels[1]-500;
+	table_to_send[9]=channels[0]-500;
 }
  static void acc_angles(){
-//	static ThreeD acc_outcome[MEDIAN_BUFFOR];
-//	for(int i = MEDIAN_BUFFOR - 1; i > 0; i--){
-//		acc_outcome[i] = acc_outcome[i-1];
-//	}
-//	acc_outcome[0].pitch 	= 	Gyro_Acc[3];
-//	acc_outcome[0].roll 	= 	Gyro_Acc[4];
-//	acc_outcome[0].yaw 		= 	Gyro_Acc[5];
-//	ThreeD acc_filtered = median_filter(acc_outcome);
-//	acc_angle_roll 	= 	atan2(acc_filtered.roll, acc_filtered.yaw) * rad_to_deg+10.2;
-//	acc_angle_pitch	=	-atan2(acc_filtered.pitch, acc_filtered.yaw) * rad_to_deg+1.644;
-//atan2(-acc_filtered.roll, sqrt(acc_filtered.pitch*acc_filtered.pitch	+ acc_filtered.yaw*acc_filtered.yaw));
-
-acc_angle_roll 	= 	atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg+10.2;
-acc_angle_pitch	=	-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg+1.644;
-
+acc_angle_roll 	= 	atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg+8.16;
+acc_angle_pitch	=	-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg-1;
 }
-
 static double milis() {
 	static uint16_t t1;
 	double temp;
@@ -155,69 +146,22 @@ static double milis() {
 	t1 = t2;
 	return temp;
 }
-
 static void gyro_angles(ThreeD *gyro_angles){
 	gyro_angles->roll 	+=	 (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt/(GYRO_TO_DPS);
 	gyro_angles->pitch 	+=	 (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt/(GYRO_TO_DPS);
-	//gyro_angles->yaw 	+=	 GYRO_TO_DPS * (Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt;
 }
-
 static void complementary_filter(){
 	gyro_angles(&angles);
 	acc_angles();
 	angles.roll			=	ACC_PART * acc_angle_roll + GYRO_PART * angles.roll;
 	angles.pitch		=	ACC_PART * acc_angle_pitch + GYRO_PART * angles.pitch;
 }
-
-static ThreeD median_filter(ThreeD values[]){
-	ThreeD filtered_values = values[0];
-	ThreeD count;
-	for(int i = 0; i < MEDIAN_BUFFOR; i++){
-		count.roll = 0;
-		count.pitch = 0;
-		count.yaw = 0;
-		for(int j = 0; j < i; j++){
-			if(values[i].roll <= values[j].roll){
-				count.roll += 1;
-			}
-			if(values[i].pitch <= values[j].pitch){
-				count.pitch += 1;
-			}
-			if(values[i].yaw <= values[j].yaw){
-				count.yaw += 1;
-			}
-			}
-		for(int j = i+1; j < MEDIAN_BUFFOR; j++){
-			if(values[i].roll <= values[j].roll){
-				count.roll += 1;
-			}
-			if(values[i].pitch <= values[j].pitch){
-				count.pitch += 1;
-			}
-			if(values[i].yaw <= values[j].yaw){
-				count.yaw += 1;
-			}
-			}
-		if(count.roll == MEDIAN_BUFFOR / 2){
-			filtered_values.roll = values[i].roll;
-		}
-		if(count.pitch == MEDIAN_BUFFOR / 2){
-			filtered_values.pitch = values[i].pitch;
-		}
-		if(count.yaw == MEDIAN_BUFFOR / 2){
-			filtered_values.yaw = values[i].yaw;
-		}	
-		}
-
-	return filtered_values;
-}
-
 static ThreeD angles_PID(){
 	ThreeD corr;
-
+	static ThreeD last_channels;
 	err.roll	=	((channels[0] - 1500)*32768/500. - angles.roll*32768/MAX_ROLL_ANGLE);
 	err.pitch	=	((channels[1] - 1500)*32768/500. - angles.pitch*32768/MAX_PITCH_ANGLE);
-	err.yaw = (channels[3] - 1500) * 32768/500. - Gyro_Acc[2] * 1000 / Rates.yaw;
+	err.yaw = (channels[3] - 1500) * 32768/500. - (Gyro_Acc[2]-GYRO_YAW_OFFSET) * 1000 / Rates.yaw;
 
 	//	estimate Integral by sum (I term):
 	sum_err.roll 	+=	 err.roll*dt;
@@ -228,9 +172,14 @@ static ThreeD angles_PID(){
 //	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
 //	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
 //	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
+//
+//	D_corr.roll= (err.roll-last_err.roll)/dt;
+//	D_corr.pitch=(err.pitch-last_err.pitch)/dt;
+//	D_corr.yaw=(err.yaw-last_err.yaw)/dt;
 
-	D_corr.roll= -Gyro_Acc[0];
-	D_corr.pitch=-Gyro_Acc[1];
+
+	D_corr.roll= -(Gyro_Acc[0]-GYRO_ROLL_OFFSET)*1000/MAX_ROLL_ANGLE+(channels[0]-last_channels.roll)/500.*32768/dt;
+	D_corr.pitch=-(Gyro_Acc[1]-GYRO_PITCH_OFFSET)*1000/MAX_PITCH_ANGLE+(channels[1]-last_channels.pitch)/500.*32768/dt;
 	D_corr.yaw=(err.yaw-last_err.yaw)/dt;
 
 	anti_windup();
@@ -248,6 +197,10 @@ static ThreeD angles_PID(){
 	last_D_corr.roll=D_corr.roll;
 	last_D_corr.pitch=D_corr.pitch;
 	last_D_corr.yaw=D_corr.yaw;
+
+	last_channels.roll=channels[0];
+	last_channels.pitch=channels[1];
+	last_channels.yaw=channels[2];
 
 	return corr;
 }
@@ -313,3 +266,27 @@ static void set_motors(ThreeD corr){
 		else if(PWM_M4 > 2000)
 			PWM_M4 = 2000;
 }
+static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]) {
+	for (uint8_t i = 0; i < 6; i++) {
+		int8_t counter;
+		for (uint8_t j = 0; j < MEDIAN_BUFFOR; j++) {
+			counter = 0;
+			for (int k = 0; k < j; k++) {
+				if (median_values[i][j] <= median_values[i][k]) {
+					counter += 1;
+				}
+			}
+			for (int k = j + 1; k < MEDIAN_BUFFOR; k++) {
+				if (median_values[i][j] <= median_values[i][k]) {
+					counter += 1;
+				}
+			}
+			if (counter >= MEDIAN_BUFFOR / 4
+					&& counter < MEDIAN_BUFFOR * 3 / 4) {
+				Gyro_Acc[i] += median_values[i][j];
+			}
+		}
+		Gyro_Acc[i] /= MEDIAN_BUFFOR/2;
+	}
+}
+

@@ -16,9 +16,11 @@ static void setup_TIM2();// setup TIM2
 static void setup_TIM21();// setup TIM21
 static void setup_I2C1();
 static void setup_NVIC();
+static void setup_PLL();
 
 void setup(){
 	change_RCC_HSI();
+	setup_PLL();
 	setup_USART2();
 	setup_GPIOA();
 	setup_GPIOB();
@@ -26,6 +28,7 @@ void setup(){
 	setup_TIM21();
 	setup_I2C1();
 	setup_NVIC();
+
 }
 
 static void change_RCC_HSI(){
@@ -38,10 +41,51 @@ static void change_RCC_HSI(){
 		RCC->CFGR |= RCC_CFGR_SW_0;
 }
 
+static void setup_PLL() {
+
+	/* (1) Test if PLL is used as System clock */
+	/* (2) Select HSI as system clock */
+	/* (3) Wait for HSI switched */
+	/* (4) Disable the PLL */
+	/* (5) Wait until PLLRDY is cleared */
+	/* (6) Set latency to 1 wait state */
+	/* (7) Set the PLL multiplier to 24 and divider by 3 */
+	/* (8) Enable the PLL */
+	/* (9) Wait until PLLRDY is set */
+	/* (10) Select PLL as system clock */
+	/* (11) Wait until the PLL is switched on */
+	if ((RCC->CFGR & RCC_CFGR_SWS) == RCC_CFGR_SWS_PLL) /* (1) */
+	{
+		RCC->CFGR = (RCC->CFGR & (uint32_t) (~RCC_CFGR_SW)) | RCC_CFGR_SW_HSI; /* (2) */
+		while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) /* (3) */
+		{
+			/* For robust implementation, add here time-out management */
+		}
+	}
+	RCC->CR &= (uint32_t) (~RCC_CR_PLLON);/* (4) */
+	while ((RCC->CR & RCC_CR_PLLRDY) != 0) /* (5) */
+	{
+		/* For robust implementation, add here time-out management */
+	}
+	FLASH->ACR |= FLASH_ACR_LATENCY; /* (6) */
+	RCC->CFGR = RCC->CFGR & (~(RCC_CFGR_PLLMUL | RCC_CFGR_PLLDIV))
+			| (RCC_CFGR_PLLMUL4 | RCC_CFGR_PLLDIV2); /* (7) */
+	RCC->CR |= RCC_CR_PLLON; /* (8) */
+	while ((RCC->CR & RCC_CR_PLLRDY) == 0) /* (9) */
+	{
+		/* For robust implementation, add here time-out management */
+	}
+	RCC->CFGR |= (uint32_t) (RCC_CFGR_SW_PLL); /* (10) */
+	while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) /* (11) */
+	{
+		/* For robust implementation, add here time-out management */
+	}
+}
+
 static void setup_USART2(){
 	// enable USART2 clock:
 		RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
-		USART2->BRR = 139 - 1; // 16 000 000 / 115 200 = 138.88
+		USART2->BRR = 278 - 1; // 16 000 000 / 115 200 = 138.88
 		USART2->CR3 = USART_CR3_OVRDIS;
 		USART2->CR1 |= USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE;
 		USART2->ISR=USART_ISR_ORE;
@@ -127,7 +171,7 @@ static void setup_TIM2(){
 		TIM2->CCER |=TIM_CCER_CC4E;
 
 
-		TIM2->PSC = 16-1; 			// zeby counter liczyl mikrosekundy
+		TIM2->PSC = 32-1; 			// zeby counter liczyl mikrosekundy
 		TIM2->ARR = 20000 - 1; 		// 1 okres pwm trwa 20[ms]
 
 		TIM2->CCR1 =1000 - 1; 			//wypelneinie channel 1
@@ -142,7 +186,7 @@ static void setup_TIM21(){
 		// register is buffered:
 		TIM21->CR1 |=TIM_CR1_ARPE;
 
-		TIM21->PSC =160 ; 			// every 10 us 1 count
+		TIM21->PSC =160*2 ; 			// every 10 us 1 count
 		TIM21->ARR = 65536 - 1; 		// 1 period is 0.65536 s long
 }
 
