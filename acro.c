@@ -19,7 +19,7 @@ extern uint16_t PWM_M2;
 extern uint16_t PWM_M3;
 extern uint16_t PWM_M4;
 extern uint16_t table_to_send[];
-
+extern uint8_t New_data_to_send;
 
 static double timer();
 static void anti_windup();
@@ -157,6 +157,7 @@ static double dt;
 		table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
 		table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
 
+		New_data_to_send=1;
 }
 
 static void anti_windup() {

@@ -23,7 +23,7 @@ extern uint16_t PWM_M2;
 extern uint16_t PWM_M3;
 extern uint16_t PWM_M4;
 extern uint16_t table_to_send[];
-
+extern uint8_t New_data_to_send;
 
 typedef struct {
 	double P;
@@ -71,9 +71,9 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 400, 400, 400 };
 
-static PID R_PID 	=	 {0.09,0.001,0.016};
-static PID P_PID 	=	 {0.09,0.001,0.016};
-static PID Y_PID 	=	 {2,0.4,0.005};
+static PID R_PID 	=	 {0.08,0.005,0.01 };
+static PID P_PID 	=	 {0.08,0.005,0.01};
+static PID Y_PID 	=	 {2,0.2,0.0005};
 
 static double srednia[6]={0};
 static double counter = 0;
@@ -103,31 +103,36 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-//	table_to_send[0]=0.1*(gyro_angle_roll*GYRO_TO_DPS+32768);
-//	table_to_send[1]=0.1*(gyro_angle_pitch*GYRO_TO_DPS+32768);
-//	table_to_send[2]=0.1*(acc_angle_roll*GYRO_TO_DPS+32768);
-//	table_to_send[3]=0.1*(acc_angle_pitch*GYRO_TO_DPS+32768);
-//	table_to_send[4]=0.1*(angles.roll*GYRO_TO_DPS+32768);
-//	table_to_send[5]=0.1*(angles.pitch*GYRO_TO_DPS+32768);
-
+	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
+	table_to_send[0]=0.1*(gyro_angle_roll*100+20000);
+	table_to_send[1]=0.1*(gyro_angle_pitch*100+20000);
+	table_to_send[2]=0.1*(acc_angle_roll*100+20000);
+	table_to_send[3]=0.1*(acc_angle_pitch*100+20000);
+	table_to_send[4]=0.1*(angles.roll*100+20000);
+	table_to_send[5]=0.1*(angles.pitch*100+20000);
 
 //	//err. Pitch Roll Yaw
 //	table_to_send[0]=0.1*(err.pitch+32768);
 //	table_to_send[1]=0.1*(err.roll+32768);
 //	table_to_send[2]=0.1*(err.yaw+32768);
 
-	//wypisywanie korekcji pitch P I D i roll P I D
-	table_to_send[0]=R_PID.P*err.pitch*500./32768.+1000;
-	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
-	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
-	table_to_send[3]=P_PID.P*err.roll*500./32768.+1000;
-	table_to_send[4]=P_PID.I*sum_err.roll*500./32768.+1000;
-	table_to_send[5]=P_PID.D*D_corr.roll*500./32768.+1000;
-	table_to_send[6]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
-	table_to_send[7]=(angles.roll)/MAX_ROLL_ANGLE*50+1000;
-	table_to_send[8]=channels[1]-500;
-	table_to_send[9]=channels[0]-500;
+//	//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
+//	table_to_send[0]=P_PID.P*err.pitch*500./32768.+1000;
+//	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+//	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+//	table_to_send[3]=R_PID.P*err.roll*500./32768.+1000;
+//	table_to_send[4]=R_PID.I*sum_err.roll*500./32768.+1000;
+//	table_to_send[5]=R_PID.D*D_corr.roll*500./32768.+1000;
+//	table_to_send[6]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
+//	table_to_send[7]=(angles.roll/MAX_ROLL_ANGLE*50)+1000;
+//	table_to_send[8]=10*(gyro_angle_roll+360);
+//	table_to_send[9]=10*(gyro_angle_pitch+360);
+//	table_to_send[10]=10*(acc_angle_roll+360);
+//	table_to_send[11]=10*(acc_angle_pitch+360);
+//	table_to_send[12]=channels[1]-500;
+//	table_to_send[13]=channels[0]-500;
+
+	New_data_to_send=1;
 }
  static void acc_angles(){
 acc_angle_roll 	= 	atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg+8.16;
@@ -149,6 +154,10 @@ static double milis() {
 static void gyro_angles(ThreeD *gyro_angles){
 	gyro_angles->roll 	+=	 (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt/(GYRO_TO_DPS);
 	gyro_angles->pitch 	+=	 (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt/(GYRO_TO_DPS);
+	gyro_angles->roll 	+=	gyro_angles->pitch*sin((Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt/(GYRO_TO_DPS)/rad_to_deg);
+	gyro_angles->pitch 	-=	 gyro_angles->roll*sin((Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt/(GYRO_TO_DPS)/rad_to_deg);
+
+
 }
 static void complementary_filter(){
 	gyro_angles(&angles);
@@ -269,6 +278,7 @@ static void set_motors(ThreeD corr){
 static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]) {
 	for (uint8_t i = 0; i < 6; i++) {
 		int8_t counter;
+		int32_t sum=0;
 		for (uint8_t j = 0; j < MEDIAN_BUFFOR; j++) {
 			counter = 0;
 			for (int k = 0; k < j; k++) {
@@ -283,10 +293,10 @@ static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]) {
 			}
 			if (counter >= MEDIAN_BUFFOR / 4
 					&& counter < MEDIAN_BUFFOR * 3 / 4) {
-				Gyro_Acc[i] += median_values[i][j];
+				sum += median_values[i][j];
 			}
 		}
-		Gyro_Acc[i] /= MEDIAN_BUFFOR/2;
+		Gyro_Acc[i] = sum/(MEDIAN_BUFFOR/2);
 	}
 }
 

@@ -28,21 +28,21 @@ int failsafe();
 static double timer();
 
 // global data
-#define  Gyro_Acc_Size 7
+#define  GYRO_ACC_SIZE 7
+#define ALL_ELEMENTS_TO_SEND 14
 
 uint8_t txDone=1;
 uint16_t channels[14];
-int16_t Gyro_Acc[Gyro_Acc_Size];
-uint16_t table_to_send[10];
+int16_t Gyro_Acc[GYRO_ACC_SIZE];
+uint16_t table_to_send[ALL_ELEMENTS_TO_SEND];
 uint16_t PWM_M1=1000;
 uint16_t PWM_M2=1000;
 uint16_t PWM_M3=1000;
 uint16_t PWM_M4=1000;
 
 uint16_t Throttle;
-int16_t Pitch;
-int16_t Roll;
-int16_t Yaw;
+
+uint8_t New_data_to_send=0;
 
 uint8_t I2C1_read_write_flag = 1;
 
@@ -96,20 +96,23 @@ int main(void)
 	update_motors();
 
 	Ibus_save();
+
 //	//channels printing to screen:
-//	for(int i=0;i<10;i++){
+//	for(int i=0;i<CHANNELS;i++){
 //		table_to_send[i]=channels[i];
 //	}
-	if ( 0!=txDone) {
+//	New_data_to_send=1;
+
+	if ( 0!=txDone && 0!=New_data_to_send) {
 			// Transmit data
 
-			print(table_to_send[element_sent],element_sent,10);
+			print(table_to_send[element_sent],element_sent,ALL_ELEMENTS_TO_SEND);
 
 			element_sent++;
 
-			if(element_sent>=CHANNELS){
+			if(element_sent>=ALL_ELEMENTS_TO_SEND){
 				element_sent=0;
-
+				New_data_to_send=0;
 			}
 	}
 	}
