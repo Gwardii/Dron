@@ -62,7 +62,7 @@ void USART2_IRQHandler(void) {
 			&& (0 != (USART_ISR_TXE & USART2->ISR))) {
 		//	transmit data:
 		if ((0 != g_txSize) && (g_txTransmitted < g_txSize)) {
-			USART2->TDR = (uint32_t) time[g_txTransmitted];
+			USART2->TDR = time[g_txTransmitted];
 			g_txTransmitted += 1;
 		}
 		// if everything is transmitted, unable transmission interrupts:

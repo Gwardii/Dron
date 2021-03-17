@@ -71,9 +71,9 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 400, 400, 400 };
 
-static PID R_PID 	=	 {0.08,0.005,0.01 };
-static PID P_PID 	=	 {0.08,0.005,0.01};
-static PID Y_PID 	=	 {2,0.2,0.0005};
+static PID R_PID 	=	 {0.08,0.008,0.01 };
+static PID P_PID 	=	 {0.08,0.008,0.01};
+static PID Y_PID 	=	 {0,0,0};
 
 static double srednia[6]={0};
 static double counter = 0;
@@ -103,34 +103,34 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-	table_to_send[0]=0.1*(gyro_angle_roll*100+20000);
-	table_to_send[1]=0.1*(gyro_angle_pitch*100+20000);
-	table_to_send[2]=0.1*(acc_angle_roll*100+20000);
-	table_to_send[3]=0.1*(acc_angle_pitch*100+20000);
-	table_to_send[4]=0.1*(angles.roll*100+20000);
-	table_to_send[5]=0.1*(angles.pitch*100+20000);
+//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
+//	table_to_send[0]=0.1*(gyro_angle_roll*100+20000);
+//	table_to_send[1]=0.1*(gyro_angle_pitch*100+20000);
+//	table_to_send[2]=0.1*(acc_angle_roll*100+20000);
+//	table_to_send[3]=0.1*(acc_angle_pitch*100+20000);
+//	table_to_send[4]=0.1*(angles.roll*100+20000);
+//	table_to_send[5]=0.1*(angles.pitch*100+20000);
 
 //	//err. Pitch Roll Yaw
 //	table_to_send[0]=0.1*(err.pitch+32768);
 //	table_to_send[1]=0.1*(err.roll+32768);
 //	table_to_send[2]=0.1*(err.yaw+32768);
 
-//	//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
-//	table_to_send[0]=P_PID.P*err.pitch*500./32768.+1000;
-//	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
-//	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
-//	table_to_send[3]=R_PID.P*err.roll*500./32768.+1000;
-//	table_to_send[4]=R_PID.I*sum_err.roll*500./32768.+1000;
-//	table_to_send[5]=R_PID.D*D_corr.roll*500./32768.+1000;
-//	table_to_send[6]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
-//	table_to_send[7]=(angles.roll/MAX_ROLL_ANGLE*50)+1000;
-//	table_to_send[8]=10*(gyro_angle_roll+360);
-//	table_to_send[9]=10*(gyro_angle_pitch+360);
-//	table_to_send[10]=10*(acc_angle_roll+360);
-//	table_to_send[11]=10*(acc_angle_pitch+360);
-//	table_to_send[12]=channels[1]-500;
-//	table_to_send[13]=channels[0]-500;
+	//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
+	table_to_send[0]=P_PID.P*err.pitch*500./32768.+1000;
+	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
+	table_to_send[2]=P_PID.D*D_corr.pitch*500./32768.+1000;
+	table_to_send[3]=R_PID.P*err.roll*500./32768.+1000;
+	table_to_send[4]=R_PID.I*sum_err.roll*500./32768.+1000;
+	table_to_send[5]=R_PID.D*D_corr.roll*500./32768.+1000;
+	table_to_send[6]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
+	table_to_send[7]=(angles.roll/MAX_ROLL_ANGLE*50)+1000;
+	table_to_send[8]=10*(gyro_angle_roll+360);
+	table_to_send[9]=10*(gyro_angle_pitch+360);
+	table_to_send[10]=10*(acc_angle_roll+360);
+	table_to_send[11]=10*(acc_angle_pitch+360);
+	table_to_send[12]=channels[1]-500;
+	table_to_send[13]=channels[0]-500;
 
 	New_data_to_send=1;
 }
