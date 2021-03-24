@@ -15,6 +15,7 @@
 #include "stabilize.h"
 #include "acro.h"
 #include "ibus.h"
+#include "connection.h"
 
 //	konfiguracja uzytkownika:
 
@@ -30,7 +31,7 @@ static double timer();
 #define ALL_ELEMENTS_TO_SEND 14
 
 uint8_t txDone = 1;
-uint16_t channels[14];
+uint16_t channels[14]={1500,1500,1000,1500,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,};
 int16_t Gyro_Acc[GYRO_ACC_SIZE];
 uint16_t table_to_send[ALL_ELEMENTS_TO_SEND];
 uint16_t PWM_M1 = 1000;
@@ -53,9 +54,6 @@ int main(void) {
 	setup();
 	setup_MPU6050();
 
-	int8_t element_sent = 0;
-	int8_t gyro_nr = 0;
-
 	while (1) {
 		static double tim2;
 
@@ -65,18 +63,11 @@ int main(void) {
 			read_all();
 			tim2 = 0;
 		}
-
-		volatile int16_t podglad[7];
-		for (int i = 0; i < 7; i++)
-			podglad[i] = Gyro_Acc[i];
-		static int kanaly[4];
-		for (int i = 0; i < 4; i++)
-			kanaly[i] = channels[i];
-
 		Throttle = channels[2];
 		// if failsafe occurs set motors to 0 rpm:
 
 		if (failsafe()) {
+
 			PWM_M1 = 1000;
 			PWM_M2 = 1000;
 			PWM_M3 = 1000;
@@ -121,9 +112,10 @@ void print(uint16_t x[], uint8_t data_to_send) {
 	time[2 * data_to_send + 3] = sum;
 
 	g_txSize = 2*data_to_send + 4;
+
 	g_txTransmitted = 0;
 	txDone = 0;
-	USART2->CR1 |= USART_CR1_TXEIE;
+	USART1->CR1 |= USART_CR1_TXEIE;
 }
 
 void update_motors() {

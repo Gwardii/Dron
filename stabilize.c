@@ -47,10 +47,10 @@ static ThreeD angles;
 static ThreeD gangles={0,0,0};
 
 static const double rad_to_deg = 180 / atan(1) / 4;
-static double acc_angle_roll;
-static double acc_angle_pitch;
-static double gyro_angle_roll;
-static double gyro_angle_pitch;
+static double acc_angle_roll=0;
+static double acc_angle_pitch=0;
+static double gyro_angle_roll=0;
+static double gyro_angle_pitch=0;
 
 static double dt;
 
@@ -71,9 +71,9 @@ static ThreeD D_corr={0,0,0};
 static ThreeD last_D_corr={0,0,0};
 static Three Rates = { 400, 400, 400 };
 
-static PID R_PID 	=	 {0.08,0.008,0.01 };
-static PID P_PID 	=	 {0.08,0.008,0.01};
-static PID Y_PID 	=	 {0,0,0};
+static PID R_PID 	=	 {0.08,0.005,0.01 };
+static PID P_PID 	=	 {0.08,0.005,0.01};
+static PID Y_PID 	=	 {2,0.1,0.0005};
 
 static double srednia[6]={0};
 static double counter = 0;
@@ -90,6 +90,7 @@ void stabilize(){
 	timer = 0;
 
 	median_filter(median_values);
+	//do wywalenia:
 	counter++;
 		for(int i=0;i<6;i++){
 			suma[i] += Gyro_Acc[i];
