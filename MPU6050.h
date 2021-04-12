@@ -9,7 +9,7 @@
 #define MPU6050_H_
 
 // MUST BE DIVISIBLE BY 4  How many samples for median filter (average is computed from a half of samples):
-#define MEDIAN_BUFFOR 16
+#define MEDIAN_BUFFOR 8
 
 #define GYRO_ROLL_OFFSET -28
 #define GYRO_PITCH_OFFSET 25

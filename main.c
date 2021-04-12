@@ -59,7 +59,7 @@ int main(void) {
 
 		tim2 += timer();
 
-		if (I2C1_read_write_flag && tim2 > 0.02 / MEDIAN_BUFFOR) {
+		if (I2C1_read_write_flag && tim2 > 0.01 / MEDIAN_BUFFOR) {
 			read_all();
 			tim2 = 0;
 		}

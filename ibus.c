@@ -37,6 +37,7 @@ void USART2_IRQHandler(void) {
 			gap_time = current_time - last_time;
 		}
 		last_time = current_time;
+		//check gap duration if bigger than 500 us brake
 		if (gap_time > 50) {
 			rxindex = 0;
 		}

@@ -213,7 +213,7 @@ static void setup_TIM21() {
 // register is buffered:
 	TIM21->CR1 |= TIM_CR1_ARPE;
 
-	TIM21->PSC = 160 * 2; 			// every 10 us 1 count
+	TIM21->PSC = 160 ; 			// every 10 us 1 count
 	TIM21->ARR = 65536 - 1; 		// 1 period is 0.65536 s long
 }
 

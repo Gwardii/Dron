@@ -78,16 +78,18 @@ static PID Y_PID 	=	 {2,0.1,0.0005};
 static double srednia[6]={0};
 static double counter = 0;
 static double suma[6]={0};
+static uint8_t loop=0;
 
 void stabilize(){
 
 	static double timer;
 	timer += milis();
-	if(timer < 20){
+	if(timer < 10){
 		return;
 	}
 	dt = timer/1000.;
 	timer = 0;
+	loop++;
 
 	median_filter(median_values);
 	//do wywalenia:
@@ -96,6 +98,7 @@ void stabilize(){
 			suma[i] += Gyro_Acc[i];
 			srednia[i] = suma[i]/counter;
 		}
+
 	// dryf zyroskopu:
 	gyro_angles(&gangles);
 	gyro_angle_roll=gangles.roll;
@@ -104,19 +107,7 @@ void stabilize(){
 	complementary_filter();
 	set_motors(angles_PID());
 
-//	// wypisywanie katów gyro (roll pitch) acc(roll pitch) po komplementarnym (roll pitch)
-//	table_to_send[0]=0.1*(gyro_angle_roll*100+20000);
-//	table_to_send[1]=0.1*(gyro_angle_pitch*100+20000);
-//	table_to_send[2]=0.1*(acc_angle_roll*100+20000);
-//	table_to_send[3]=0.1*(acc_angle_pitch*100+20000);
-//	table_to_send[4]=0.1*(angles.roll*100+20000);
-//	table_to_send[5]=0.1*(angles.pitch*100+20000);
-
-//	//err. Pitch Roll Yaw
-//	table_to_send[0]=0.1*(err.pitch+32768);
-//	table_to_send[1]=0.1*(err.roll+32768);
-//	table_to_send[2]=0.1*(err.yaw+32768);
-
+	if(loop>1){
 	//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
 	table_to_send[0]=P_PID.P*err.pitch*500./32768.+1000;
 	table_to_send[1]=P_PID.I*sum_err.pitch*500./32768.+1000;
@@ -124,8 +115,8 @@ void stabilize(){
 	table_to_send[3]=R_PID.P*err.roll*500./32768.+1000;
 	table_to_send[4]=R_PID.I*sum_err.roll*500./32768.+1000;
 	table_to_send[5]=R_PID.D*D_corr.roll*500./32768.+1000;
-	table_to_send[6]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
-	table_to_send[7]=(angles.roll/MAX_ROLL_ANGLE*50)+1000;
+	table_to_send[6]=(angles.roll/MAX_ROLL_ANGLE*50)+1000;
+	table_to_send[7]=(angles.pitch/MAX_PITCH_ANGLE*50)+1000;
 	table_to_send[8]=10*(gyro_angle_roll+360);
 	table_to_send[9]=10*(gyro_angle_pitch+360);
 	table_to_send[10]=10*(acc_angle_roll+360);
@@ -133,8 +124,12 @@ void stabilize(){
 	table_to_send[12]=channels[1]-500;
 	table_to_send[13]=channels[0]-500;
 
+	loop=0;
+
 	New_data_to_send=1;
+	}
 }
+
  static void acc_angles(){
 acc_angle_roll 	= 	atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg+8.16;
 acc_angle_pitch	=	-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg-1;
