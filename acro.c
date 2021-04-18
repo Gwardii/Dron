@@ -49,7 +49,7 @@ static Three Rates = { 500, 500, 400 };
 
 static PID R_PID = { 0.6, 0.8, 0.013 };
 static PID P_PID = { 0.6, 0.8, 0.013};
-static PID Y_PID = { 2, 0.1, 0.001};
+static PID Y_PID = { 2, 0.4, 0.001};
 
 static Three err={0,0,0};
 static ThreeD sum_err = { 0, 0, 0 };
@@ -207,7 +207,6 @@ static double timer(){
 static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]) {
 	for (uint8_t i = 0; i < 6; i++) {
 		int8_t counter;
-		int32_t sum=0;
 		for (uint8_t j = 0; j < MEDIAN_BUFFOR; j++) {
 			counter = 0;
 			for (int k = 0; k < j; k++) {
@@ -222,9 +221,9 @@ static void median_filter(int16_t median_values[][MEDIAN_BUFFOR]) {
 			}
 			if (counter >= MEDIAN_BUFFOR / 4
 					&& counter < MEDIAN_BUFFOR * 3 / 4) {
-				sum += median_values[i][j];
+				Gyro_Acc[i] += median_values[i][j];
 			}
 		}
-		Gyro_Acc[i] = sum/(MEDIAN_BUFFOR/2);
+		Gyro_Acc[i] /= MEDIAN_BUFFOR/2;
 	}
 }
