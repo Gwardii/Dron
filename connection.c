@@ -6,14 +6,39 @@
  */
 #include "stm32l0xx.h"
 #include "stm32l0xx_nucleo.h"
+#include "global_constants.h"
+#include "global_variables.h"
+#include "global_functions.h"
 #include "connection.h"
 
-extern volatile uint8_t time[];
-extern uint8_t txDone;
-extern volatile int32_t g_txSize;
-extern volatile int32_t g_txTransmitted;
 
+
+uint8_t table_of_bytes_to_sent[2*ALL_ELEMENTS_TO_SEND+4];
+static volatile int32_t txTransmitted;
+static volatile int32_t txSize;
 static uint8_t bufor[50];
+
+void DMA1_Channel2_3_IRQHandler(void) {
+	//if channel2 transfer USART1 is completed:
+	if(DMA1->ISR& DMA_ISR_TCIF2){
+	DMA1->IFCR|= DMA_IFCR_CTCIF2;
+	DMA1_Channel2->CCR &= ~DMA_CCR_EN;
+	transmitting_is_Done = 1;
+	}
+	//if channel3 transfer I2C is completed:
+	if(DMA1->ISR& DMA_ISR_TCIF3){
+		DMA1->IFCR|= DMA_IFCR_CTCIF3;
+		I2C1_read_write_flag = 1;
+
+		DMA1_Channel3->CCR &= ~DMA_CCR_EN;
+		if (ibus_received==0){
+		USART2->CR1 |= USART_CR1_RXNEIE;
+		//USART2->CR1 |= USART_CR1_IDLEIE;
+		}
+
+	}
+}
+
 
 void USART1_IRQHandler(void) {
 
@@ -34,15 +59,35 @@ void USART1_IRQHandler(void) {
 	if ((0 != (USART_CR1_TXEIE & USART1->CR1))
 			&& (0 != (USART_ISR_TXE & USART1->ISR))) {
 		//	transmit data:
-		if ((0 != g_txSize) && (g_txTransmitted < g_txSize)) {
-			USART1->TDR = time[g_txTransmitted];
-			g_txTransmitted += 1;
+		if ((0 != txSize) && (txTransmitted < txSize)) {
+			USART1->TDR = table_of_bytes_to_sent[txTransmitted];
+			txTransmitted += 1;
 		}
 		// if everything is transmitted, unable transmission interrupts:
-		if (g_txTransmitted == g_txSize) {
+		if (txTransmitted == txSize) {
 			USART1->CR1 &= ~USART_CR1_TXEIE;
-			txDone = 1;
+			transmitting_is_Done = 1;
 		}
 	}
 }
+void print(uint16_t x[], uint8_t data_to_send) {
+	 uint16_t sum = 0;
 
+	table_of_bytes_to_sent[0] = 0x20;
+	table_of_bytes_to_sent[1] = 0x40;
+	for (int i = 0; i < data_to_send; i++) {
+		table_of_bytes_to_sent[2 * i + 2] = x[i] >> 8;
+		table_of_bytes_to_sent[2 * i + 3] = x[i];
+		sum += x[i];
+	}
+	table_of_bytes_to_sent[2 * data_to_send + 2] = sum>>8;
+	table_of_bytes_to_sent[2 * data_to_send + 3] = sum;
+
+	txSize = 2*data_to_send + 4;
+
+	txTransmitted = 0;
+	transmitting_is_Done = 0;
+	New_data_to_send = 0;
+	//USART1->CR1 |= USART_CR1_TXEIE;
+	DMA1_Channel2->CCR |= DMA_CCR_EN;
+}

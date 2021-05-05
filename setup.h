@@ -9,5 +9,6 @@
 #define SETUP_H_
 
 void setup();
+void setup_NVIC();
 
 #endif /* SETUP_H_ */

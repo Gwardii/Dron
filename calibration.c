@@ -24,10 +24,12 @@
 //
 #include "stm32l0xx.h"
 #include "stm32l0xx_nucleo.h"
-#include "calibration.h"
+#include "global_constants.h"
+#include "global_variables.h"
+#include "global_functions.h"
 #include "MPU6050.h"
+#include "calibration.h"
 
-extern int16_t Gyro_Acc[];
 
 int16_t gyro_tab_x[1000];
 int16_t gyro_tab_y[1000];
@@ -42,7 +44,7 @@ int16_t acc_tab_z[1000];
 ThreeXYZ gyro_calibration(){
 ThreeXYZ G_calibration={0,0,0};
 	for(int i=0;i<1000;i++){
-		gyro_read();
+
 		for(int j=i;j>0;j--){
 			if(Gyro_Acc[0]>gyro_tab_x[j-1]){
 				gyro_tab_x[j]=Gyro_Acc[0];
@@ -79,7 +81,6 @@ ThreeXYZ G_calibration={0,0,0};
 ThreeXYZ acc_calibration(){
 	ThreeXYZ A_calibration={0,0,0};
 	for(int i=0;i<1000;i++){
-		gyro_read();
 		for(int j=i;j>0;j--){
 			if(Gyro_Acc[3]>gyro_tab_x[j-1]){
 				gyro_tab_x[j]=Gyro_Acc[3];

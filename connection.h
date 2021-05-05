@@ -9,5 +9,7 @@
 #define CONNECTION_H_
 
 void USART1_IRQHandler();
+void DMA1_Channel2_3_IRQHandler();
+void print(uint16_t x[], uint8_t data_to_send);
 
 #endif /* CONNECTION_H_ */
