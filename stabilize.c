@@ -11,8 +11,6 @@
 #include "MPU6050.h"
 #include "stabilize.h"
 
-
-
 typedef struct {
 	double P;
 	double I;
@@ -42,14 +40,12 @@ static double gyro_angle_pitch = 0;
 
 static double dt;
 
-
 static void gyro_angles(ThreeD*);
 static void complementary_filter();
 static void acc_angles();
 static ThreeD corrections();
 static void set_motors(ThreeD);
 static void anti_windup();
-
 
 // err values - difference between set value and measured value:
 static ThreeD err = { 0, 0, 0 };
@@ -64,16 +60,15 @@ static PID P_PID = { 0.09, 0.025, 0.015 };
 static PID Y_PID = { 2, 0.1, 0.0005 };
 
 //for debugging only:
-static int puk2=0;
+static int puk2 = 0;
 
 void stabilize() {
 
 	static double time_flag1_1;
 	static double time_flag1_2;
 
-	dt = (get_Global_Time()-time_flag1_1);
-	time_flag1_1=get_Global_Time();
-
+	dt = (get_Global_Time() - time_flag1_1);
+	time_flag1_1 = get_Global_Time();
 
 	//median_filter(measurement_tab);
 	// dryf zyroskopu:
@@ -84,9 +79,8 @@ void stabilize() {
 	complementary_filter();
 	set_motors(corrections());
 
-
-	if ((get_Global_Time()-time_flag1_2) >= 1. / FREQUENCY_TELEMETRY_UPDATE) {
-		time_flag1_2=get_Global_Time();
+	if ((get_Global_Time() - time_flag1_2) >= 1. / FREQUENCY_TELEMETRY_UPDATE) {
+		time_flag1_2 = get_Global_Time();
 		puk2++;
 		//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
 		table_to_send[0] = P_PID.P * err.pitch * 500. / 32768. + 1000;
@@ -110,9 +104,13 @@ void stabilize() {
 }
 
 static void acc_angles() {
-double acc_filter_rate=0.05;
-	acc_angle_roll = (1-acc_filter_rate)*acc_angle_roll+acc_filter_rate*(atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg + 8.16);
-	acc_angle_pitch = (1-acc_filter_rate)*acc_angle_pitch+acc_filter_rate*(-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg - 1);
+	double acc_filter_rate = 0.05;
+	acc_angle_roll = (1 - acc_filter_rate) * acc_angle_roll
+			+ acc_filter_rate
+					* (atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg + 8.16);
+	acc_angle_pitch = (1 - acc_filter_rate) * acc_angle_pitch
+			+ acc_filter_rate
+					* (-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg - 1);
 }
 
 static void gyro_angles(ThreeD *gyro_angles) {
@@ -154,7 +152,6 @@ static ThreeD corrections() {
 //	D_corr.roll= ((err.roll-last_err.roll)/dt+last_D_corr.roll)/2.;
 //	D_corr.pitch=((err.pitch-last_err.pitch)/dt+last_D_corr.pitch)/2.;
 //	D_corr.yaw=((err.yaw-last_err.yaw)/dt+last_D_corr.yaw)/2.;
-
 
 	D_corr.roll = -(Gyro_Acc[0] - GYRO_ROLL_OFFSET) * 1000 / MAX_ROLL_ANGLE
 			+ (channels[0] - last_channels.roll) / 500. * 32768 / dt;
@@ -231,29 +228,29 @@ static void anti_windup() {
 }
 static void set_motors(ThreeD corr) {
 	//	Make corrections:
-		//	right front:
-		pwm_m1 = Throttle - corr.pitch + corr.yaw - corr.roll;
-		//	right back:
-		pwm_m2 = Throttle + corr.pitch - corr.yaw - corr.roll;
-		//	left back:
-		pwm_m3 = Throttle + corr.pitch + corr.yaw + corr.roll;
-		//	left front:
-		pwm_m4 = Throttle - corr.pitch - corr.yaw + corr.roll;
-		if (pwm_m1 < 1050) {
-			pwm_m1 = 1050;
-		} else if (pwm_m1 > 2000)
-			pwm_m1 = 2000;
-		if (pwm_m2 < 1050) {
-			pwm_m2 = 1050;
-		} else if (pwm_m2 > 2000)
-			pwm_m2 = 2000;
-		if (pwm_m3 < 1050) {
-			pwm_m3 = 1050;
-		} else if (pwm_m3 > 2000)
-			pwm_m3 = 2000;
-		if (pwm_m4 < 1050) {
-			pwm_m4 = 1050;
-		} else if (pwm_m4 > 2000)
-			pwm_m4 = 2000;
+	//	right front:
+	pwm_m1 = Throttle - corr.pitch + corr.yaw - corr.roll;
+	//	right back:
+	pwm_m2 = Throttle + corr.pitch - corr.yaw - corr.roll;
+	//	left back:
+	pwm_m3 = Throttle + corr.pitch + corr.yaw + corr.roll;
+	//	left front:
+	pwm_m4 = Throttle - corr.pitch - corr.yaw + corr.roll;
+	if (pwm_m1 < 1050) {
+		pwm_m1 = 1050;
+	} else if (pwm_m1 > 2000)
+		pwm_m1 = 2000;
+	if (pwm_m2 < 1050) {
+		pwm_m2 = 1050;
+	} else if (pwm_m2 > 2000)
+		pwm_m2 = 2000;
+	if (pwm_m3 < 1050) {
+		pwm_m3 = 1050;
+	} else if (pwm_m3 > 2000)
+		pwm_m3 = 2000;
+	if (pwm_m4 < 1050) {
+		pwm_m4 = 1050;
+	} else if (pwm_m4 > 2000)
+		pwm_m4 = 2000;
 
 }

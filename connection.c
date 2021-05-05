@@ -11,34 +11,31 @@
 #include "global_functions.h"
 #include "connection.h"
 
-
-
-uint8_t table_of_bytes_to_sent[2*ALL_ELEMENTS_TO_SEND+4];
+uint8_t table_of_bytes_to_sent[2 * ALL_ELEMENTS_TO_SEND + 4];
 static volatile int32_t txTransmitted;
 static volatile int32_t txSize;
 static uint8_t bufor[50];
 
 void DMA1_Channel2_3_IRQHandler(void) {
 	//if channel2 transfer USART1 is completed:
-	if(DMA1->ISR& DMA_ISR_TCIF2){
-	DMA1->IFCR|= DMA_IFCR_CTCIF2;
-	DMA1_Channel2->CCR &= ~DMA_CCR_EN;
-	transmitting_is_Done = 1;
+	if (DMA1->ISR & DMA_ISR_TCIF2) {
+		DMA1->IFCR |= DMA_IFCR_CTCIF2;
+		DMA1_Channel2->CCR &= ~DMA_CCR_EN;
+		transmitting_is_Done = 1;
 	}
 	//if channel3 transfer I2C is completed:
-	if(DMA1->ISR& DMA_ISR_TCIF3){
-		DMA1->IFCR|= DMA_IFCR_CTCIF3;
+	if (DMA1->ISR & DMA_ISR_TCIF3) {
+		DMA1->IFCR |= DMA_IFCR_CTCIF3;
 		I2C1_read_write_flag = 1;
 
 		DMA1_Channel3->CCR &= ~DMA_CCR_EN;
-		if (ibus_received==0){
-		USART2->CR1 |= USART_CR1_RXNEIE;
-		//USART2->CR1 |= USART_CR1_IDLEIE;
+		if (ibus_received == 0) {
+			USART2->CR1 |= USART_CR1_RXNEIE;
+			//USART2->CR1 |= USART_CR1_IDLEIE;
 		}
 
 	}
 }
-
 
 void USART1_IRQHandler(void) {
 
@@ -48,8 +45,8 @@ void USART1_IRQHandler(void) {
 
 		bufor[i] = USART1->RDR;
 		i++;
-		if(i>=50){
-			i=0;
+		if (i >= 50) {
+			i = 0;
 		}
 	}
 
@@ -71,7 +68,7 @@ void USART1_IRQHandler(void) {
 	}
 }
 void print(uint16_t x[], uint8_t data_to_send) {
-	 uint16_t sum = 0;
+	uint16_t sum = 0;
 
 	table_of_bytes_to_sent[0] = 0x20;
 	table_of_bytes_to_sent[1] = 0x40;
@@ -80,14 +77,14 @@ void print(uint16_t x[], uint8_t data_to_send) {
 		table_of_bytes_to_sent[2 * i + 3] = x[i];
 		sum += x[i];
 	}
-	table_of_bytes_to_sent[2 * data_to_send + 2] = sum>>8;
+	table_of_bytes_to_sent[2 * data_to_send + 2] = sum >> 8;
 	table_of_bytes_to_sent[2 * data_to_send + 3] = sum;
 
-	txSize = 2*data_to_send + 4;
+	txSize = 2 * data_to_send + 4;
 
 	txTransmitted = 0;
 	transmitting_is_Done = 0;
 	New_data_to_send = 0;
-	//USART1->CR1 |= USART_CR1_TXEIE;
+
 	DMA1_Channel2->CCR |= DMA_CCR_EN;
 }

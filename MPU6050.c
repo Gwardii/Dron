@@ -72,16 +72,12 @@ double M_rotacji[3][3] = { { (ACC_CALIBRATION_X_X - ACC_PITCH_OFFSET)
 								+ pow(ACC_CALIBRATION_Z_X - ACC_PITCH_OFFSET,
 										2)) } };
 
-
 uint8_t read_write_tab[14];
 static volatile uint8_t read_write_quantity;
-
 static double time_flag4_1;
 
-
 //for debugging only:
-static uint32_t pak1=0;
-
+static uint32_t pak1 = 0;
 
 void I2C1_IRQHandler() {
 	static uint8_t i = 0;
@@ -118,18 +114,18 @@ void EXTI4_15_IRQHandler() {
 
 		EXTI->PR |= EXTI_PR_PIF9; // clear this bit setting it as 1
 
-		if( I2C1_read_write_flag == 1 ){
-				EXTI->IMR &= ~EXTI_IMR_IM9;
-				USART2->CR1 &= ~USART_CR1_RXNEIE;
+		if (I2C1_read_write_flag == 1) {
+			EXTI->IMR &= ~EXTI_IMR_IM9;
+			USART2->CR1 &= ~USART_CR1_RXNEIE;
 			//	USART2->CR1 &= ~USART_CR1_IDLEIE;
 
-//for debugging only:
-				for(int i=0;i<14;i++){
-					read_write_tab[i]=0;
-				}
-				read_all();
+			//for debugging only:
+			for (int i = 0; i < 14; i++) {
+				read_write_tab[i] = 0;
+			}
 
-					pak1++;
+			read_all();
+			pak1++;
 		}
 //		if (I2C1_read_write_flag != 1){
 //
@@ -173,8 +169,20 @@ void EXTI4_15_IRQHandler() {
 		PWM_M2 = &motor_off;
 		PWM_M3 = &motor_off;
 		PWM_M4 = &motor_off;
+		switch (failsafe_type) {
+		case 1:
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		case 4:
+			break;
+		case 5:
+			break;
+		default:
+		}
 	}
-
 }
 
 void setup_MPU6050() {
@@ -188,10 +196,10 @@ void I2C_Start(uint16_t Number_of_Bytes) {
 	I2C1->CR2 = ((~0xF0000 & (I2C1->CR2)) | Number_of_Bytes << 16);
 	// wys³anie bajtu START aby rozpocz¹c komunikacje:
 	I2C1->CR2 |= I2C_CR2_START;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (I2C1->CR2 & I2C_CR2_START) {
 		// czekam az START w CR2 zosatnie wyczyszczony aby wys³ac kolejne bajty
-	//	failsafe_I2C();
+		failsafe_I2C();
 	}
 }
 void I2C_StartWrite(uint16_t Number_of_Bytes) {
@@ -207,7 +215,6 @@ void I2C_StartRead(uint16_t Number_of_Bytes) {
 	I2C_Start(Number_of_Bytes);
 }
 
-
 void read_all() {
 	I2C1_read_write_flag = 0;
 	read(0x3B, 14);
@@ -217,25 +224,25 @@ static void setup_conf() {
 	//-------main MPU6050 setting-----------
 
 	//	slave address shifted by 1:
-		I2C1->CR2 |= 0x68 << 1;
-		//	start communication:
-		I2C_StartWrite(2);
-		// address of Power Management 1 register:
-		I2C1->TXDR = 0x6B;
-		time_flag4_1=get_Global_Time();
-		while (!(I2C1->ISR & I2C_ISR_TXE)) {
-			//	waiting as Data will be sent, failsafe if set time passed
-		//failsafe_CONF();
-		}
-		// set 0x80 in this register (RESET)
-		I2C1->TXDR = 0x80;
-		time_flag4_1=get_Global_Time();
-		while (!(I2C1->ISR & I2C_ISR_TXE)) {
-			//	waiting as Data will be sent, failsafe if set time passed
-			failsafe_CONF();
-		}
+	I2C1->CR2 |= 0x68 << 1;
+	//	start communication:
+	I2C_StartWrite(2);
+	// address of Power Management 1 register:
+	I2C1->TXDR = 0x6B;
+	time_flag4_1 = get_Global_Time();
+	while (!(I2C1->ISR & I2C_ISR_TXE)) {
+		//	waiting as Data will be sent, failsafe if set time passed
+		failsafe_CONF();
+	}
+	// set 0x80 in this register (RESET)
+	I2C1->TXDR = 0x80;
+	time_flag4_1 = get_Global_Time();
+	while (!(I2C1->ISR & I2C_ISR_TXE)) {
+		//	waiting as Data will be sent, failsafe if set time passed
+		failsafe_CONF();
+	}
 	//delay of 0.1[s] according the MPU6050 datasheet
-		delay_mili(150);
+	delay_mili(150);
 
 	//	slave address shifted by 1:
 	I2C1->CR2 |= 0x68 << 1;
@@ -243,14 +250,14 @@ static void setup_conf() {
 	I2C_StartWrite(2);
 	// address of Power Management 1 register:
 	I2C1->TXDR = 0x6B;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
 	}
 	// set 0x0 in this register (SLEEP -> 0)
 	I2C1->TXDR = 0x0;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
@@ -262,14 +269,14 @@ static void setup_conf() {
 	I2C_StartWrite(2);
 	// address of (26) Configuration register:
 	I2C1->TXDR = 0x1A;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
 	}
 	// setting low pass filter in this register (turn off)
 	I2C1->TXDR = 0x01;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
@@ -281,14 +288,14 @@ static void setup_conf() {
 	I2C_StartWrite(2);
 	// address of (36) I2C Master Control register:
 	I2C1->TXDR = 0x24;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
 	}
 	// clock divider in this register
 	I2C1->TXDR = 0xD;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
@@ -300,14 +307,14 @@ static void setup_conf() {
 	I2C_StartWrite(2);
 	// address of (56) Interrupt Enable register:
 	I2C1->TXDR = 0x38;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
 	}
 	// setting interrupt source as Data Register
 	I2C1->TXDR = 0x0001;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
@@ -321,14 +328,14 @@ static void setup_gyro() {
 	I2C_StartWrite(2);
 	// address of Gyroscope Configuration register:
 	I2C1->TXDR = 0x1C;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent, failsafe if set time passed
 		failsafe_CONF();
 	}
 	// set +/-1000[deg/s]
 	I2C1->TXDR = 0x10;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent
 		failsafe_CONF();
@@ -341,14 +348,14 @@ static void setup_acc() {
 	I2C_StartWrite(2);
 	//	address of Accelerometer Configuration register:
 	I2C1->TXDR = 0x1B;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent
 		failsafe_CONF();
 	}
 	// set +/-8[g]
 	I2C1->TXDR = 0x10;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent
 		failsafe_CONF();
@@ -359,7 +366,7 @@ static void read(uint8_t address, uint8_t n) {
 	I2C_StartWrite(1);
 	//	1st address of accelerometer measurements, every next reading will increase register number by 1
 	I2C1->TXDR = address;
-	time_flag4_1=get_Global_Time();
+	time_flag4_1 = get_Global_Time();
 	while (!(I2C1->ISR & I2C_ISR_TXE)) {
 		//	waiting as Data will be sent
 		failsafe_I2C();
@@ -399,17 +406,17 @@ void rewrite_data() {
 	}
 }
 
-void failsafe_CONF(){
+void failsafe_CONF() {
 	//	waiting as Data will be sent or failsafe if set time passed
-	if((get_Global_Time()-time_flag4_1)>=MAX_I2C_TIME){
-		failsafe_type=4;
+	if ((get_Global_Time() - time_flag4_1) >= MAX_I2C_TIME) {
+		failsafe_type = 4;
 		EXTI->SWIER |= EXTI_SWIER_SWI15;
 	}
 }
-void failsafe_I2C(){
+void failsafe_I2C() {
 	//	waiting as Data will be sent or failsafe if set time passed
-	if((get_Global_Time()-time_flag4_1)>=MAX_I2C_TIME){
-		failsafe_type=5;
+	if ((get_Global_Time() - time_flag4_1) >= MAX_I2C_TIME) {
+		failsafe_type = 5;
 		EXTI->SWIER |= EXTI_SWIER_SWI15;
 	}
 }

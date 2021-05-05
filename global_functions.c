@@ -36,10 +36,10 @@ double timer(double t1) {
 }
 void TIM6_DAC_IRQHandler() {
 	if (TIM_SR_UIF & TIM6->SR) {
-		TIM6->SR&=~TIM_SR_UIF;
+		TIM6->SR &= ~TIM_SR_UIF;
 		Global_Time += (TIM6->ARR) / 1000000.;
 	}
 }
 double get_Global_Time() {
-	return (Global_Time+(TIM6->CNT) / 1000000.);
+	return (Global_Time + (TIM6->CNT) / 1000000.);
 }

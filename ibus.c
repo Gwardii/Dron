@@ -11,14 +11,12 @@
 #include "global_functions.h"
 #include "ibus.h"
 
+volatile uint8_t rxBuf[32];
+static uint8_t rxindex = 0;
 
-
- volatile uint8_t rxBuf[32];
-static  uint8_t rxindex = 0;
-
-static  uint16_t current_time;
-static  uint16_t last_time;
-static  uint16_t gap_time;
+static uint16_t current_time;
+static uint16_t last_time;
+static uint16_t gap_time;
 
 static void failsafe_RX();
 
@@ -114,15 +112,14 @@ void USART2_IRQHandler(void) {
 
 void Ibus_save() {
 	static double time_flag3_1;
-	if ((get_Global_Time()-time_flag3_1) >= MAX_NO_SIGNAL_TIME) {
-		failsafe_type=3;
+	if ((get_Global_Time() - time_flag3_1) >= MAX_NO_SIGNAL_TIME) {
+		failsafe_type = 3;
 		EXTI->SWIER |= EXTI_SWIER_SWI15;
 	}
 
-
 	// checking checksum and rewriting rxBuf to channels:
 	if (ibus_received) {
-	time_flag3_1 = get_Global_Time();
+		time_flag3_1 = get_Global_Time();
 		uint16_t checksum = 0xFFFF;
 		for (int8_t i = 0; i < 30; i++) {
 			checksum -= rxBuf[i];
@@ -145,17 +142,15 @@ void Ibus_save() {
 }
 static void failsafe_RX() {
 	// Arming switch - SA
-	if (channels[4] <= DISARM_VALUE ){
-		failsafe_type=1;
-				EXTI->SWIER |= EXTI_SWIER_SWI15;
-	}
-	else if( channels[0] <= MIN_RX_SIGNAL
-			|| channels[0] >= MAX_RX_SIGNAL || channels[1] <= MIN_RX_SIGNAL
-			|| channels[1] >= MAX_RX_SIGNAL || channels[2] <= MIN_RX_SIGNAL
-			|| channels[2] >= MAX_RX_SIGNAL || channels[3] <= MIN_RX_SIGNAL
-			|| channels[3] >= MAX_RX_SIGNAL) {
+	if (channels[4] <= DISARM_VALUE) {
+		failsafe_type = 1;
+		EXTI->SWIER |= EXTI_SWIER_SWI15;
+	} else if (channels[0] <= MIN_RX_SIGNAL || channels[0] >= MAX_RX_SIGNAL
+			|| channels[1] <= MIN_RX_SIGNAL || channels[1] >= MAX_RX_SIGNAL
+			|| channels[2] <= MIN_RX_SIGNAL || channels[2] >= MAX_RX_SIGNAL
+			|| channels[3] <= MIN_RX_SIGNAL || channels[3] >= MAX_RX_SIGNAL) {
 
-		failsafe_type=2;
+		failsafe_type = 2;
 		EXTI->SWIER |= EXTI_SWIER_SWI15;
 
 	} else {

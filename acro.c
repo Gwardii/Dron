@@ -32,7 +32,6 @@ typedef struct {
 	double yaw;
 } ThreeD;
 
-
 static void anti_windup();
 static ThreeD corrections();
 static void set_motors(ThreeD corr);
@@ -53,20 +52,20 @@ static Three last_D_corr = { 0, 0, 0 };
 static double dt;
 
 //for debuging only:
-static int puk2=0;
+static int puk2 = 0;
 
 void acro() {
 
 	static double time_flag2_1;
 	static double time_flag2_2;
 
-	dt = (get_Global_Time()-time_flag2_1);
-	time_flag2_1=get_Global_Time();
+	dt = (get_Global_Time() - time_flag2_1);
+	time_flag2_1 = get_Global_Time();
 
 	set_motors(corrections());
 
-	if ((get_Global_Time()-time_flag2_2) >= 1. / FREQUENCY_TELEMETRY_UPDATE) {
-		time_flag2_2=get_Global_Time();
+	if ((get_Global_Time() - time_flag2_2) >= 1. / FREQUENCY_TELEMETRY_UPDATE) {
+		time_flag2_2 = get_Global_Time();
 		puk2++;
 		//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
 		table_to_send[0] = P_PID.P * err.pitch * 500. / 32768. + 1000;
@@ -133,9 +132,9 @@ static void anti_windup() {
 
 }
 
+static ThreeD corrections() {
 
-static ThreeD corrections(){
-static ThreeD corr = { 0, 0, 0 };
+	static ThreeD corr = { 0, 0, 0 };
 
 	err.roll = (channels[0] - 1500) * 32768 / 500.
 			- (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * 1000 / Rates.roll;

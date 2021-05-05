@@ -20,7 +20,6 @@
 #include "ibus.h"
 #include "connection.h"
 
-
 void update_motors();
 
 //for debugging only:
@@ -33,19 +32,19 @@ int main(void) {
 	setup_MPU6050();
 	setup_NVIC();
 
-	static double time_flag0_1=0;
-	static double time_flag0_2=0;
-	static double time_flag0_3=0;
+	static double time_flag0_1 = 0;
+	static double time_flag0_2 = 0;
+	static double time_flag0_3 = 0;
 	while (1) {
 
-		if ((get_Global_Time()-time_flag0_1) >= 10) {
+		if ((get_Global_Time() - time_flag0_1) >= 10) {
 			time_flag0_1 = get_Global_Time();
 			pik = 0;
 			pek = 0;
 		}
 		pek++;
 
-		if ((get_Global_Time()-time_flag0_2)>= 1. / FREQUENCY_PID_LOOP) {
+		if ((get_Global_Time() - time_flag0_2) >= 1. / FREQUENCY_PID_LOOP) {
 			time_flag0_2 = get_Global_Time();
 			Ibus_save();
 			rewrite_data();
@@ -63,8 +62,8 @@ int main(void) {
 			}
 		}
 
-		if ((get_Global_Time()-time_flag0_3) >= 1. / FREQUENCY_ESC_UPDATE) {
-			time_flag0_3=get_Global_Time();
+		if ((get_Global_Time() - time_flag0_3) >= 1. / FREQUENCY_ESC_UPDATE) {
+			time_flag0_3 = get_Global_Time();
 			update_motors();
 
 		}
@@ -78,6 +77,4 @@ void update_motors() {
 	TIM2->CCR3 = *PWM_M3 - 1; 			//wypelneinie motor 3
 	TIM2->CCR4 = *PWM_M4 - 1; 			//wypelneinie motor 4
 }
-
-
 

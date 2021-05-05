@@ -11,7 +11,6 @@
 #include "global_functions.h"
 #include "setup.h"
 
-
 static void change_RCC_HSI(); // chyba nie trzeba nic dodawac
 static void setup_USART2(); // USART for radioreceiver
 static void setup_USART1(); // USART for sending data (bluetooth or radio)
@@ -27,7 +26,7 @@ static void setup_PLL();
 static void setup_EXTI();
 static void setup_DMA();
 
-extern uint8_t time[2 * ALL_ELEMENTS_TO_SEND + 4];
+extern uint8_t table_of_bytes_to_sent[2 * ALL_ELEMENTS_TO_SEND + 4];
 extern uint8_t read_write_tab[];
 extern volatile uint8_t rxBuf[];
 void setup() {
@@ -106,7 +105,8 @@ static void setup_USART2() {
 	USART2->CR3 |= USART_CR3_OVRDIS;
 	USART2->CR3 |= USART_CR3_DMAR;
 	USART2->CR1 |=
-USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE|USART_CR1_IDLEIE;
+	USART_CR1_RXNEIE | USART_CR1_RE | USART_CR1_TE | USART_CR1_UE
+			| USART_CR1_IDLEIE;
 }
 
 static void setup_USART1() {
@@ -254,7 +254,7 @@ static void setup_TIM21() {
 // register is buffered:
 	TIM21->CR1 |= TIM_CR1_ARPE;
 
-	TIM21->PSC = (32-1)*10; 			// every 10 us 1 count
+	TIM21->PSC = (32 - 1) * 10; 			// every 10 us 1 count
 	TIM21->ARR = 65536 - 1; 		// 1 period is 0.65536 s long
 
 	//	TIM21 enabling:
@@ -266,10 +266,10 @@ static void setup_TIM6() {
 // register is buffered:
 	TIM6->CR1 |= TIM_CR1_ARPE;
 
-	TIM6->PSC = 32-1; 			// every 1 us 1 count
+	TIM6->PSC = 32 - 1; 			// every 1 us 1 count
 	TIM6->ARR = 65536 - 1; 		// 1 period is 0.065536 s long
 
-	TIM6->DIER|=TIM_DIER_UIE;
+	TIM6->DIER |= TIM_DIER_UIE;
 	//	TIM6 enabling:
 	TIM6->CR1 |= TIM_CR1_CEN;
 }
@@ -307,7 +307,7 @@ static void setup_DMA() {
 	RCC->AHBENR |= RCC_AHBENR_DMA1EN;
 	DMA1_CSELR->CSELR |= 0b0011 << 4;
 	DMA1_Channel2->CPAR = (uint32_t) (&(USART1->TDR));
-	DMA1_Channel2->CMAR = (uint32_t) (time);
+	DMA1_Channel2->CMAR = (uint32_t) (table_of_bytes_to_sent);
 	DMA1_Channel2->CNDTR = 2 * ALL_ELEMENTS_TO_SEND + 4;
 	DMA1_Channel2->CCR &= 0x000;
 	DMA1_Channel2->CCR |= DMA_CCR_MINC | DMA_CCR_CIRC | DMA_CCR_DIR
@@ -318,7 +318,8 @@ static void setup_DMA() {
 	DMA1_Channel5->CMAR = (uint32_t) (&rxBuf[1]);
 	DMA1_Channel5->CNDTR = 31;
 	DMA1_Channel5->CCR &= 0x000;
-	DMA1_Channel5->CCR |= DMA_CCR_MINC | DMA_CCR_CIRC | DMA_CCR_TCIE|DMA_CCR_PL_0;
+	DMA1_Channel5->CCR |= DMA_CCR_MINC | DMA_CCR_CIRC | DMA_CCR_TCIE
+			| DMA_CCR_PL_0;
 
 	//IMU reading:
 	DMA1_CSELR->CSELR |= 0b0110 << 8;
@@ -326,7 +327,8 @@ static void setup_DMA() {
 	DMA1_Channel3->CMAR = (uint32_t) (read_write_tab);
 	DMA1_Channel3->CNDTR = 14;
 	DMA1_Channel3->CCR &= 0x000;
-	DMA1_Channel3->CCR |= DMA_CCR_MINC | DMA_CCR_CIRC | DMA_CCR_TCIE|DMA_CCR_PL_1;
+	DMA1_Channel3->CCR |= DMA_CCR_MINC | DMA_CCR_CIRC | DMA_CCR_TCIE
+			| DMA_CCR_PL_1;
 
 }
 void setup_NVIC() {
