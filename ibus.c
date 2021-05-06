@@ -14,9 +14,6 @@
 volatile uint8_t rxBuf[32];
 static uint8_t rxindex = 0;
 
-static uint16_t current_time;
-static uint16_t last_time;
-static uint16_t gap_time;
 
 static void failsafe_RX();
 
@@ -41,21 +38,18 @@ void DMA1_Channel4_5_6_7_IRQHandler(void) {
 }
 void USART2_IRQHandler(void) {
 	//RDR not empty flag:
+	static double time_flag5_1;
 	if (0 != (USART_ISR_RXNE & USART2->ISR)) {
-
-		//	read actual value of I-BUS (flag will be automatically removed):
-		current_time = TIM21->CNT;
-		if (current_time < last_time) {
-			gap_time = current_time - last_time + TIM21->ARR;
-		} else {
-			gap_time = current_time - last_time;
-		}
-		last_time = current_time;
 		//check gap duration if bigger than 500 us brake
-		if (gap_time > 50) {
-			rxindex = 0;
 
-		}
+//tu jest coœ Ÿle przy zakomenntowanym dzia³a porawinie a jesli to odkomentujê przerwa wynosi oko³o 0.065[s] a to czas trwania 10 ramek ibusa bez sensu
+//		if ( (get_Global_Time() - time_flag5_1) > 0.0005) {
+//			rxindex = 0;
+//		}
+//
+//		time_flag5_1 = get_Global_Time();
+
+		//	read actual value of I-BUS (Interrupt flag will be automatically removed):
 		rxBuf[rxindex] = USART2->RDR;
 		if (rxindex == 1 && rxBuf[rxindex] == 0x40) {
 

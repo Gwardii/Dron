@@ -114,7 +114,7 @@ void EXTI4_15_IRQHandler() {
 
 		EXTI->PR |= EXTI_PR_PIF9; // clear this bit setting it as 1
 
-		if (I2C1_read_write_flag == 1) {
+		if (I2C1_read_write_flag != 0) {
 			EXTI->IMR &= ~EXTI_IMR_IM9;
 			USART2->CR1 &= ~USART_CR1_RXNEIE;
 			//	USART2->CR1 &= ~USART_CR1_IDLEIE;
@@ -180,7 +180,6 @@ void EXTI4_15_IRQHandler() {
 			break;
 		case 5:
 			break;
-		default:
 		}
 	}
 }
@@ -377,7 +376,7 @@ static void read(uint8_t address, uint8_t n) {
 }
 
 void rewrite_data() {
-	if (I2C1_read_write_flag == 1) {
+	if (I2C1_read_write_flag != 0) {
 		for (int i = 0; i < 3; i++) {
 			//gyro:
 			Gyro_Acc[i] = read_write_tab[2 * i + 8] << 8
@@ -396,9 +395,13 @@ void rewrite_data() {
 				temporary[j + 3] += Gyro_Acc[i + 3] * M_rotacji[i][j];
 			}
 		}
-		for (int i = 0; i < 6; i++) {
-			Gyro_Acc[i] = temporary[i];
-		}
+
+		Gyro_Acc[0] = temporary[0]- GYRO_ROLL_OFFSET;
+		Gyro_Acc[1] = temporary[1]- GYRO_PITCH_OFFSET;
+		Gyro_Acc[2] = temporary[2] - GYRO_YAW_OFFSET;
+		Gyro_Acc[3] = temporary[3]- ACC_ROLL_OFFSET;
+		Gyro_Acc[4] = temporary[4]-ACC_PITCH_OFFSET;
+		Gyro_Acc[5] = temporary[5]-ACC_YAW_OFFSET;
 
 		//temperature:
 		Gyro_Acc[6] = read_write_tab[6] << 8 | read_write_tab[7];

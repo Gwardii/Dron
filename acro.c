@@ -53,9 +53,10 @@ static double dt;
 
 //for debuging only:
 static int puk2 = 0;
+static double czas_trwania_petli = 0;
 
 void acro() {
-
+	czas_trwania_petli =get_Global_Time();
 	static double time_flag2_1;
 	static double time_flag2_2;
 
@@ -83,8 +84,9 @@ void acro() {
 		table_to_send[12] = channels[1] - 500;
 		table_to_send[13] = channels[0] - 500;
 
-		New_data_to_send = 1;
 
+		czas_trwania_petli =get_Global_Time()-czas_trwania_petli;
+		New_data_to_send = 1;
 	}
 
 }
@@ -137,11 +139,11 @@ static ThreeD corrections() {
 	static ThreeD corr = { 0, 0, 0 };
 
 	err.roll = (channels[0] - 1500) * 32768 / 500.
-			- (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * 1000 / Rates.roll;
-	err.pitch = (channels[1] - 1500) * 32768 / 500.
-			- (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * 1000 / Rates.pitch;
+			- Gyro_Acc[0] * 1000 / Rates.roll;
+	err.pitch = channels[1]  * 32768 / 500.
+			- Gyro_Acc[1] * 1000 / Rates.pitch;
 	err.yaw = (channels[3] - 1500) * 32768 / 500.
-			- (Gyro_Acc[2] - GYRO_YAW_OFFSET) * 1000 / Rates.yaw;
+			- Gyro_Acc[2]  * 1000 / Rates.yaw;
 
 	//	estimate Integral by sum (I term):
 	sum_err.roll += err.roll * dt;

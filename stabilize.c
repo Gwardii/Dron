@@ -55,14 +55,17 @@ static ThreeD D_corr = { 0, 0, 0 };
 static ThreeD last_D_corr = { 0, 0, 0 };
 static Three Rates = { 400, 400, 400 };
 
-static PID R_PID = { 0.09, 0.025, 0.015 };
-static PID P_PID = { 0.09, 0.025, 0.015 };
-static PID Y_PID = { 2, 0.1, 0.0005 };
+static PID R_PID = { 0.1, 0.035, 0.015 };
+static PID P_PID = { 0.1, 0.035, 0.015 };
+static PID Y_PID = { 2.1, 0.11, 0.0005 };
 
 //for debugging only:
 static int puk2 = 0;
+static double czas_trwania_petli = 0;
 
 void stabilize() {
+
+	czas_trwania_petli = get_Global_Time();
 
 	static double time_flag1_1;
 	static double time_flag1_2;
@@ -98,32 +101,34 @@ void stabilize() {
 		table_to_send[12] = channels[1] - 500;
 		table_to_send[13] = channels[0] - 500;
 
-		New_data_to_send = 1;
 
+		czas_trwania_petli = get_Global_Time() - czas_trwania_petli;
+		New_data_to_send = 1;
 	}
+
 }
 
 static void acc_angles() {
 	double acc_filter_rate = 0.05;
 	acc_angle_roll = (1 - acc_filter_rate) * acc_angle_roll
 			+ acc_filter_rate
-					* (atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg + 8.16);
+					* (atan2(Gyro_Acc[4], Gyro_Acc[5]) * rad_to_deg + ROLL_OFFSET);
 	acc_angle_pitch = (1 - acc_filter_rate) * acc_angle_pitch
 			+ acc_filter_rate
-					* (-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg - 1);
+					* (-atan2(Gyro_Acc[3], Gyro_Acc[5]) * rad_to_deg + PITCH_OFFSET);
 }
 
 static void gyro_angles(ThreeD *gyro_angles) {
-	gyro_angles->roll += (Gyro_Acc[0] - GYRO_ROLL_OFFSET) * dt / (GYRO_TO_DPS);
-	gyro_angles->pitch += (Gyro_Acc[1] - GYRO_PITCH_OFFSET) * dt
+	gyro_angles->roll += Gyro_Acc[0] * dt / (GYRO_TO_DPS);
+	gyro_angles->pitch += Gyro_Acc[1] * dt
 			/ (GYRO_TO_DPS);
 	gyro_angles->roll += gyro_angles->pitch
 			* sin(
-					(Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt / (GYRO_TO_DPS)
+					Gyro_Acc[2] * dt / (GYRO_TO_DPS)
 							/ rad_to_deg);
 	gyro_angles->pitch -= gyro_angles->roll
 			* sin(
-					(Gyro_Acc[2] - GYRO_YAW_OFFSET) * dt / (GYRO_TO_DPS)
+					Gyro_Acc[2] * dt / (GYRO_TO_DPS)
 							/ rad_to_deg);
 
 }
