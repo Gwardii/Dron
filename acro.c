@@ -68,7 +68,7 @@ void acro() {
 	if ((get_Global_Time() - time_flag2_2) >= 1. / FREQUENCY_TELEMETRY_UPDATE) {
 		time_flag2_2 = get_Global_Time();
 		puk2++;
-		//wypisywanie korekcji pitch P I D i roll P I D; k¹tów; zadanych wartosci
+		//wypisywanie korekcji pitch P I D i roll P I D; kÂ¹tÃ³w; zadanych wartosci
 		table_to_send[0] = P_PID.P * err.pitch * 500. / 32768. + 1000;
 		table_to_send[1] = P_PID.I * sum_err.pitch * 500. / 32768. + 1000;
 		table_to_send[2] = P_PID.D * D_corr.pitch * 500. / 32768. + 1000;
@@ -140,7 +140,7 @@ static ThreeD corrections() {
 
 	err.roll = (channels[0] - 1500) * 32768 / 500.
 			- Gyro_Acc[0] * 1000 / Rates.roll;
-	err.pitch = channels[1]  * 32768 / 500.
+	err.pitch = (channels[1] - 1500)  * 32768 / 500.
 			- Gyro_Acc[1] * 1000 / Rates.pitch;
 	err.yaw = (channels[3] - 1500) * 32768 / 500.
 			- Gyro_Acc[2]  * 1000 / Rates.yaw;
